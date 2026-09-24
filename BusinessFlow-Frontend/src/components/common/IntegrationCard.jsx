@@ -4,7 +4,18 @@ const IntegrationCard = ({
   description,
   action = "Connect",
   iconClassName = "text-[#315D80]",
+  onAction,
+  loading = false,
+  disabled = false,
 }) => {
+  const handleAction = () => {
+    if (disabled || loading) return;
+
+    if (onAction) {
+      onAction();
+    }
+  };
+
   return (
     <div
       className="
@@ -39,7 +50,12 @@ const IntegrationCard = ({
             ${iconClassName}
           `}
         >
-          {Icon && <Icon size={16} strokeWidth={1.8} />}
+          {Icon && (
+            <Icon
+              size={16}
+              strokeWidth={1.8}
+            />
+          )}
         </div>
 
         <div className="min-w-0">
@@ -56,16 +72,22 @@ const IntegrationCard = ({
       {/* Action */}
       <button
         type="button"
-        className="
+        onClick={handleAction}
+        disabled={disabled || loading}
+        className={`
           shrink-0
           text-[8px]
           font-semibold
           text-[#173B5C]
           transition-colors
-          hover:text-[#079BEA]
-        "
+          ${
+            disabled || loading
+              ? "cursor-not-allowed opacity-50"
+              : "hover:text-[#079BEA]"
+          }
+        `}
       >
-        {action}
+        {loading ? "..." : action}
       </button>
     </div>
   );

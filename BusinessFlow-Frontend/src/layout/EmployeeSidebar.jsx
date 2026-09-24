@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 
 import {
   LayoutDashboard,
@@ -72,6 +72,19 @@ const employeeMenu = [
 ========================================================= */
 
 const EmployeeSidebar = () => {
+  const navigate = useNavigate();
+
+  // =====================================================
+  // LOGOUT
+  // =====================================================
+
+  const handleLogout = () => {
+    localStorage.removeItem("businessflow_token");
+    localStorage.removeItem("businessflow_user");
+
+    navigate("/login", { replace: true });
+  };
+
   return (
     <aside
       className="
@@ -303,29 +316,83 @@ const EmployeeSidebar = () => {
             </p>
           </div>
 
-          {/* Logout */}
-          <button
-            type="button"
-            aria-label="Logout"
-            className="
-              flex
-              h-7
-              w-7
-              shrink-0
-              items-center
-              justify-center
-              rounded-md
-              text-white/55
-              transition-colors
-              hover:bg-white/10
-              hover:text-white
-            "
-          >
-            <LogOut
-              size={13}
-              strokeWidth={1.8}
-            />
-          </button>
+          {/* =================================================
+              LOGOUT BUTTON
+          ================================================= */}
+
+          <div className="group relative shrink-0">
+
+            {/* Logout Tooltip */}
+            <div
+              className="
+                pointer-events-none
+                absolute
+                bottom-full
+                right-0
+                mb-2
+                whitespace-nowrap
+                rounded-[4px]
+                bg-[#FFFFFF]
+                px-2
+                py-1
+                text-[8px]
+                font-semibold
+                text-[#173B5C]
+                opacity-0
+                shadow-[0_4px_12px_rgba(0,0,0,0.18)]
+                transition-all
+                duration-150
+                group-hover:translate-y-[-2px]
+                group-hover:opacity-100
+              "
+            >
+              Logout
+
+              {/* Tooltip Arrow */}
+              <span
+                className="
+                  absolute
+                  right-2
+                  top-full
+                  h-0
+                  w-0
+                  border-l-[4px]
+                  border-r-[4px]
+                  border-t-[4px]
+                  border-l-transparent
+                  border-r-transparent
+                  border-t-white
+                "
+              />
+            </div>
+
+            {/* Logout Icon */}
+            <button
+              type="button"
+              onClick={handleLogout}
+              aria-label="Logout"
+              className="
+                flex
+                h-7
+                w-7
+                items-center
+                justify-center
+                rounded-md
+                text-white/55
+                transition-all
+                duration-200
+                hover:bg-white/10
+                hover:text-white
+                active:scale-95
+              "
+            >
+              <LogOut
+                size={13}
+                strokeWidth={1.8}
+              />
+            </button>
+
+          </div>
         </div>
 
       </div>

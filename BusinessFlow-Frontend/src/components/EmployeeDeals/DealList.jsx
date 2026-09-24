@@ -1,71 +1,395 @@
-import {
-  MoreHorizontal,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { MoreHorizontal, Loader2 } from "lucide-react";
 
-const deals = [
-  {
-    id: 1,
-    deal: "Enterprise CRM Upgrade",
-    company: "Acme Corporation",
-    stage: "Negotiation",
-    stageClass: "bg-[#FFF0DE] text-[#E87500]",
-    value: "$24,000",
-    probability: 75,
-    probabilityClass: "bg-[#E87500]",
-    expectedClose: "Sep 24, 2026",
-    lastActivity: "Today",
-  },
-  {
-    id: 2,
-    deal: "Website Automation Package",
-    company: "TechNova",
-    stage: "Proposal",
-    stageClass: "bg-[#DDF2FF] text-[#0784C7]",
-    value: "$18,500",
-    probability: 60,
-    probabilityClass: "bg-[#0784C7]",
-    expectedClose: "Sep 28, 2026",
-    lastActivity: "Yesterday",
-  },
-  {
-    id: 3,
-    deal: "CRM Integration",
-    company: "Bright Systems",
-    stage: "Qualified",
-    stageClass: "bg-[#E7EEF7] text-[#47709A]",
-    value: "$12,800",
-    probability: 40,
-    probabilityClass: "bg-[#47709A]",
-    expectedClose: "Oct 03, 2026",
-    lastActivity: "Aug 29, 2026",
-  },
-  {
-    id: 4,
-    deal: "Business Intelligence Suite",
-    company: "NovaTech",
-    stage: "Negotiation",
-    stageClass: "bg-[#FFF0DE] text-[#E87500]",
-    value: "$21,600",
-    probability: 70,
-    probabilityClass: "bg-[#E87500]",
-    expectedClose: "Sep 30, 2026",
-    lastActivity: "Today",
-  },
-  {
-    id: 5,
-    deal: "Customer Support Platform",
-    company: "Vertex Solutions",
-    stage: "New",
-    stageClass: "bg-[#EEF2F5] text-[#60758A]",
-    value: "$7,900",
-    probability: 20,
-    probabilityClass: "bg-[#60758A]",
-    expectedClose: "Oct 12, 2026",
-    lastActivity: "Aug 28, 2026",
-  },
-];
+// =====================================================
+// API
+// =====================================================
 
-const DealList = () => {
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000";
+
+// =====================================================
+// STAGE STYLES
+// =====================================================
+
+const getStageClass = (stage) => {
+  switch (stage) {
+    case "Negotiation":
+      return "bg-[#FFF0DE] text-[#E87500]";
+
+    case "Proposal":
+      return "bg-[#DDF2FF] text-[#0784C7]";
+
+    case "Qualification":
+      return "bg-[#E7EEF7] text-[#47709A]";
+
+    case "Prospecting":
+      return "bg-[#EEF2F5] text-[#60758A]";
+
+    case "Closed Won":
+      return "bg-[#E1F6E9] text-[#20A65A]";
+
+    case "Closed Lost":
+      return "bg-[#FDE8E8] text-[#D64545]";
+
+    default:
+      return "bg-[#EEF2F5] text-[#60758A]";
+  }
+};
+
+// =====================================================
+// PROBABILITY COLOR
+// =====================================================
+
+const getProbabilityClass = (probability) => {
+  if (probability >= 75) {
+    return "bg-[#20A65A]";
+  }
+
+  if (probability >= 50) {
+    return "bg-[#E87500]";
+  }
+
+  if (probability >= 25) {
+    return "bg-[#0784C7]";
+  }
+
+  return "bg-[#60758A]";
+};
+
+// =====================================================
+// FORMAT CURRENCY
+// =====================================================
+
+const formatCurrency = (value) => {
+  const numericValue = Number(value) || 0;
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(numericValue);
+};
+
+// =====================================================
+// FORMAT DATE
+// =====================================================
+
+const formatDate = (dateValue) => {
+  if (!dateValue) {
+    return "—";
+  }
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+};
+
+// =====================================================
+// FORMAT LAST ACTIVITY
+// =====================================================
+
+const formatLastActivity = (dateValue) => {
+  if (!dateValue) {
+    return "—";
+  }
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  const now = new Date();
+
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+
+  const startOfYesterday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - 1
+  );
+
+  const activityDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+
+  if (activityDate.getTime() === startOfToday.getTime()) {
+    return "Today";
+  }
+
+  if (
+    activityDate.getTime() ===
+    startOfYesterday.getTime()
+  ) {
+    return "Yesterday";
+  }
+
+  const diffMs = now.getTime() - date.getTime();
+  const diffMinutes = Math.floor(
+    diffMs / (1000 * 60)
+  );
+
+  if (
+    diffMinutes >= 0 &&
+    diffMinutes < 60
+  ) {
+    return `${Math.max(diffMinutes, 1)} min ago`;
+  }
+
+  const diffHours = Math.floor(
+    diffMinutes / 60
+  );
+
+  if (
+    diffHours >= 1 &&
+    diffHours < 24
+  ) {
+    return `${diffHours}h ago`;
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+};
+
+// =====================================================
+// FORMAT DEAL
+// =====================================================
+
+const formatDealForUI = (deal) => {
+  const probability =
+    Number(deal?.probability) || 0;
+
+  return {
+    id: deal?.id || deal?._id,
+
+    deal:
+      deal?.title ||
+      deal?.name ||
+      "Untitled Deal",
+
+    company:
+      deal?.company ||
+      deal?.customerName ||
+      "—",
+
+    stage:
+      deal?.stage ||
+      "Prospecting",
+
+    stageClass:
+      getStageClass(deal?.stage),
+
+    value:
+      formatCurrency(deal?.value),
+
+    probability,
+
+    probabilityClass:
+      getProbabilityClass(probability),
+
+    expectedClose:
+      formatDate(
+        deal?.expectedCloseDate
+      ),
+
+    lastActivity:
+      formatLastActivity(
+        deal?.lastActivityAt
+      ),
+  };
+};
+
+// =====================================================
+// DEAL LIST
+// =====================================================
+
+const DealList = ({
+  search = "",
+  stage = "",
+  value = "",
+  closeDate = "",
+  sort = "newest",
+}) => {
+  const [deals, setDeals] = useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  // ===================================================
+  // FETCH MY DEALS
+  // ===================================================
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchDeals = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const token =
+          localStorage.getItem(
+            "businessflow_token"
+          );
+
+        if (!token) {
+          if (isMounted) {
+            setError(
+              "Authentication required."
+            );
+            setLoading(false);
+          }
+
+          return;
+        }
+
+        // =============================================
+        // QUERY PARAMS
+        // =============================================
+
+        const params =
+          new URLSearchParams();
+
+        params.set("page", "1");
+        params.set("limit", "5");
+
+        if (
+          typeof search === "string" &&
+          search.trim()
+        ) {
+          params.set(
+            "search",
+            search.trim()
+          );
+        }
+
+        if (stage) {
+          params.set("stage", stage);
+        }
+
+        if (value) {
+          params.set("value", value);
+        }
+
+        if (closeDate) {
+          params.set(
+            "closeDate",
+            closeDate
+          );
+        }
+
+        if (sort) {
+          params.set("sort", sort);
+        }
+
+        // =============================================
+        // API REQUEST
+        // =============================================
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/deals/me?${params.toString()}`,
+          {
+            method: "GET",
+
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
+        );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result?.message ||
+              "Unable to load deals."
+          );
+        }
+
+        const backendDeals =
+          result?.data?.deals;
+
+        if (
+          !Array.isArray(
+            backendDeals
+          )
+        ) {
+          throw new Error(
+            "Invalid deals response from server."
+          );
+        }
+
+        const formattedDeals =
+          backendDeals.map(
+            formatDealForUI
+          );
+
+        if (isMounted) {
+          setDeals(
+            formattedDeals
+          );
+        }
+      } catch (err) {
+        console.error(
+          "Employee Deal List Error:",
+          err
+        );
+
+        if (isMounted) {
+          setDeals([]);
+          setError(
+            err?.message ||
+              "Unable to load deals."
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchDeals();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    search,
+    stage,
+    value,
+    closeDate,
+    sort,
+  ]);
+
+  // ===================================================
+  // RENDER
+  // ===================================================
+
   return (
     <div
       className="
@@ -106,66 +430,181 @@ const DealList = () => {
       </div>
 
       {/* =================================================
+          LOADING
+      ================================================== */}
+
+      {loading && (
+        <div
+          className="
+            flex
+            min-h-[180px]
+            w-full
+            items-center
+            justify-center
+          "
+        >
+          <div className="flex items-center gap-2">
+            <Loader2
+              size={14}
+              className="animate-spin text-[#0B3D6B]"
+            />
+
+            <span
+              className="
+                text-[8px]
+                font-medium
+                text-[#718599]
+              "
+            >
+              Loading deals...
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================
+          ERROR
+      ================================================== */}
+
+      {!loading && error && (
+        <div
+          className="
+            flex
+            min-h-[180px]
+            w-full
+            items-center
+            justify-center
+            px-4
+          "
+        >
+          <p
+            className="
+              text-center
+              text-[8px]
+              font-medium
+              text-[#D64545]
+            "
+          >
+            {error}
+          </p>
+        </div>
+      )}
+
+      {/* =================================================
+          EMPTY
+      ================================================== */}
+
+      {!loading &&
+        !error &&
+        deals.length === 0 && (
+          <div
+            className="
+              flex
+              min-h-[180px]
+              w-full
+              items-center
+              justify-center
+              px-4
+            "
+          >
+            <div className="text-center">
+              <p
+                className="
+                  text-[9px]
+                  font-semibold
+                  text-[#17324D]
+                "
+              >
+                No deals found
+              </p>
+
+              <p
+                className="
+                  mt-1
+                  text-[7px]
+                  text-[#718599]
+                "
+              >
+                No deals are currently assigned
+                to you.
+              </p>
+            </div>
+          </div>
+        )}
+
+      {/* =================================================
           TABLE
       ================================================== */}
 
-      <div className="w-full overflow-x-auto">
-        <table className="w-full min-w-[800px] border-collapse">
-          {/* Table Head */}
-          <thead>
-            <tr className="border-b border-[#DCE5ED] bg-[#FBFCFD]">
-              <th className={headerClass}>
-                Deal
-              </th>
+      {!loading &&
+        !error &&
+        deals.length > 0 && (
+          <div className="w-full overflow-x-auto">
+            <table className="w-full min-w-[800px] border-collapse">
+              {/* Table Head */}
 
-              <th className={headerClass}>
-                Company
-              </th>
+              <thead>
+                <tr className="border-b border-[#DCE5ED] bg-[#FBFCFD]">
+                  <th className={headerClass}>
+                    Deal
+                  </th>
 
-              <th className={headerClass}>
-                Stage
-              </th>
+                  <th className={headerClass}>
+                    Company
+                  </th>
 
-              <th className={`${headerClass} text-right`}>
-                Value
-              </th>
+                  <th className={headerClass}>
+                    Stage
+                  </th>
 
-              <th className={`${headerClass} text-center`}>
-                Probability
-              </th>
+                  <th
+                    className={`${headerClass} text-right`}
+                  >
+                    Value
+                  </th>
 
-              <th className={headerClass}>
-                Expected Close
-              </th>
+                  <th
+                    className={`${headerClass} text-center`}
+                  >
+                    Probability
+                  </th>
 
-              <th className={headerClass}>
-                Last Activity
-              </th>
+                  <th className={headerClass}>
+                    Expected Close
+                  </th>
 
-              <th className={`${headerClass} text-center`}>
-                Actions
-              </th>
-            </tr>
-          </thead>
+                  <th className={headerClass}>
+                    Last Activity
+                  </th>
 
-          {/* Table Body */}
-          <tbody>
-            {deals.map((deal) => (
-              <DealRow
-                key={deal.id}
-                deal={deal}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  <th
+                    className={`${headerClass} text-center`}
+                  >
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+
+              {/* Table Body */}
+
+              <tbody>
+                {deals.map((deal) => (
+                  <DealRow
+                    key={deal.id}
+                    deal={deal}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
     </div>
   );
 };
 
-/* =========================================================
-   DEAL ROW
-========================================================= */
+// =====================================================
+// DEAL ROW
+// =====================================================
 
 const DealRow = ({ deal }) => {
   return (
@@ -178,6 +617,7 @@ const DealRow = ({ deal }) => {
       "
     >
       {/* Deal */}
+
       <td className={cellClass}>
         <span
           className="
@@ -191,6 +631,7 @@ const DealRow = ({ deal }) => {
       </td>
 
       {/* Company */}
+
       <td className={cellClass}>
         <span
           className="
@@ -203,6 +644,7 @@ const DealRow = ({ deal }) => {
       </td>
 
       {/* Stage */}
+
       <td className={cellClass}>
         <span
           className={`
@@ -220,6 +662,7 @@ const DealRow = ({ deal }) => {
       </td>
 
       {/* Value */}
+
       <td
         className={`
           ${cellClass}
@@ -238,6 +681,7 @@ const DealRow = ({ deal }) => {
       </td>
 
       {/* Probability */}
+
       <td className={cellClass}>
         <div className="flex flex-col items-center">
           <div
@@ -256,7 +700,13 @@ const DealRow = ({ deal }) => {
                 ${deal.probabilityClass}
               `}
               style={{
-                width: `${deal.probability}%`,
+                width: `${Math.min(
+                  Math.max(
+                    deal.probability,
+                    0
+                  ),
+                  100
+                )}%`,
               }}
             />
           </div>
@@ -274,21 +724,39 @@ const DealRow = ({ deal }) => {
       </td>
 
       {/* Expected Close */}
+
       <td className={cellClass}>
-        <span className="text-[7px] text-[#60758A]">
+        <span
+          className="
+            text-[7px]
+            text-[#60758A]
+          "
+        >
           {deal.expectedClose}
         </span>
       </td>
 
       {/* Last Activity */}
+
       <td className={cellClass}>
-        <span className="text-[7px] text-[#60758A]">
+        <span
+          className="
+            text-[7px]
+            text-[#60758A]
+          "
+        >
           {deal.lastActivity}
         </span>
       </td>
 
       {/* Actions */}
-      <td className={`${cellClass} text-center`}>
+
+      <td
+        className={`
+          ${cellClass}
+          text-center
+        `}
+      >
         <button
           type="button"
           aria-label={`Actions for ${deal.deal}`}
@@ -314,9 +782,9 @@ const DealRow = ({ deal }) => {
   );
 };
 
-/* =========================================================
-   TABLE STYLES
-========================================================= */
+// =====================================================
+// TABLE STYLES
+// =====================================================
 
 const headerClass = `
   px-3

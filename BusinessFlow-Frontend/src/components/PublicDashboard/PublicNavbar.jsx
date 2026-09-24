@@ -1,89 +1,19 @@
 import { Menu, X, Zap } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import logoBlue from "../../assets/logos/Logo-b.png";
+
 
 const PublicNavbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
 
-  /* =====================================================
-     ACTIVE SECTION DETECTION
-  ====================================================== */
-
-  useEffect(() => {
-    const sections = [
-      "home",
-      "features",
-      "solutions",
-      "ai",
-      "pricing",
-      "contact",
-    ];
-
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + 120;
-
-      let currentSection = "home";
-
-      sections.forEach((sectionId) => {
-        const section = document.getElementById(sectionId);
-
-        if (section && section.offsetTop <= scrollPosition) {
-          currentSection = sectionId;
-        }
-      });
-
-      setActiveSection(currentSection);
-    };
-
-    handleScroll();
-
-    window.addEventListener("scroll", handleScroll, {
-      passive: true,
-    });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
-  }, []);
-
-
-  /* =====================================================
-     SMOOTH SCROLL
-  ====================================================== */
-
-  const handleSectionClick = (sectionId) => {
-    setMenuOpen(false);
-
-    if (sectionId === "home") {
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
-
-      return;
-    }
-
-    const section = document.getElementById(sectionId);
-
-    if (section) {
-      const navbarHeight = 58;
-
-      const top =
-        section.getBoundingClientRect().top +
-        window.scrollY -
-        navbarHeight;
-
-      window.scrollTo({
-        top,
-        behavior: "smooth",
-      });
-    }
-  };
-
+  const location = useLocation();
+  const navigate = useNavigate();
 
   /* =====================================================
      NAV ITEMS
+     Pricing removed
   ====================================================== */
 
   const navItems = [
@@ -100,15 +30,184 @@ const PublicNavbar = () => {
       label: "AI Capabilities",
     },
     {
-      id: "pricing",
-      label: "Pricing",
-    },
-    {
       id: "contact",
       label: "Contact",
     },
   ];
 
+  /* =====================================================
+     ACTIVE SECTION DETECTION
+  ====================================================== */
+
+  useEffect(() => {
+    // Contact page
+    if (location.pathname === "/contact") {
+      setActiveSection("contact");
+      return;
+    }
+
+    // Other pages
+    if (location.pathname !== "/") {
+      setActiveSection("");
+      return;
+    }
+
+    const sections = [
+      "home",
+      "features",
+      "solutions",
+      "ai",
+    ];
+
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY + 120;
+
+      let currentSection = "home";
+
+      sections.forEach((sectionId) => {
+        const section = document.getElementById(sectionId);
+
+        if (
+          section &&
+          section.offsetTop <= scrollPosition
+        ) {
+          currentSection = sectionId;
+        }
+      });
+
+      setActiveSection(currentSection);
+    };
+
+    handleScroll();
+
+    window.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [location.pathname]);
+
+  /* =====================================================
+     CLOSE MOBILE MENU
+  ====================================================== */
+
+  const closeMenu = () => {
+    setMenuOpen(false);
+  };
+
+  /* =====================================================
+     HOME SECTION SCROLL
+  ====================================================== */
+
+  const handleSectionClick = (sectionId) => {
+    closeMenu();
+
+    // Contact is a separate page
+    if (sectionId === "contact") {
+      navigate("/contact");
+      return;
+    }
+
+    // If not on homepage, go home first
+    if (location.pathname !== "/") {
+      navigate("/");
+
+      // Wait for homepage to render
+      setTimeout(() => {
+        scrollToSection(sectionId);
+      }, 100);
+
+      return;
+    }
+
+    scrollToSection(sectionId);
+  };
+
+  /* =====================================================
+     SCROLL TO SECTION
+  ====================================================== */
+
+  const scrollToSection = (sectionId) => {
+    if (sectionId === "home") {
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+
+      setActiveSection("home");
+      return;
+    }
+
+    const section = document.getElementById(sectionId);
+
+    if (!section) {
+      return;
+    }
+
+    const navbarHeight = 64;
+
+    const top =
+      section.getBoundingClientRect().top +
+      window.scrollY -
+      navbarHeight;
+
+    window.scrollTo({
+      top,
+      behavior: "smooth",
+    });
+
+    setActiveSection(sectionId);
+  };
+
+  /* =====================================================
+     NAV LINK CLASS
+  ====================================================== */
+
+  const getNavClass = (isActive) => `
+    relative
+    rounded-[7px]
+    px-3.5
+    py-2
+    text-[13px]
+    font-medium
+    transition-all
+    duration-300
+
+    ${
+      isActive
+        ? `
+          bg-[#E8F2FF]
+          text-[#0B5A96]
+          shadow-[0_3px_12px_rgba(40,121,215,0.08)]
+        `
+        : `
+          text-[#30465B]
+          hover:bg-[#F0F5FA]
+          hover:text-[#0B5A96]
+        `
+    }
+  `;
+
+  /* =====================================================
+     ACTIVE INDICATOR
+  ====================================================== */
+
+  const ActiveIndicator = () => (
+    <span
+      className="
+        absolute
+        bottom-[3px]
+        left-1/2
+        h-[2px]
+        w-[16px]
+        -translate-x-1/2
+        rounded-full
+        bg-[#2879D7]
+      "
+    />
+  );
 
   return (
     <header
@@ -123,10 +222,9 @@ const PublicNavbar = () => {
         backdrop-blur-xl
       "
     >
-
       {/* =================================================
           NAVBAR CONTAINER
-      ================================================= */}
+      ================================================== */}
 
       <div
         className="
@@ -143,15 +241,14 @@ const PublicNavbar = () => {
           xl:px-12
         "
       >
-
         {/* =================================================
             LOGO
-        ================================================= */}
+        ================================================== */}
 
         <Link
           to="/"
           onClick={() => {
-            setMenuOpen(false);
+            closeMenu();
             setActiveSection("home");
           }}
           className="
@@ -161,46 +258,22 @@ const PublicNavbar = () => {
             gap-2
           "
         >
-
-          <div
-            className="
-              flex
-              h-[28px]
-              w-[28px]
-              items-center
-              justify-center
-              rounded-[7px]
-              bg-[#E8F2FF]
-            "
-          >
-            <Zap
-              size={18}
-              strokeWidth={2.3}
-              className="
-                fill-[#0B3D6B]
-                text-[#0B3D6B]
-              "
-            />
-          </div>
-
-
-          <span
-            className="
-              text-[17px]
-              font-bold
-              tracking-[-0.5px]
-              text-[#0A2139]
-            "
-          >
-            BusinessFlow AI
-          </span>
-
+          <img
+  src={logoBlue}
+  alt="BusinessFlow AI"
+  className="
+    h-[48px]
+    w-auto
+    max-w-[240px]
+    object-contain
+    object-left
+  "
+/>
         </Link>
-
 
         {/* =================================================
             DESKTOP NAVIGATION
-        ================================================= */}
+        ================================================== */}
 
         <nav
           className="
@@ -210,10 +283,32 @@ const PublicNavbar = () => {
             md:flex
           "
         >
-
           {navItems.map((item) => {
             const isActive =
               activeSection === item.id;
+
+            /* ---------------------------------------------
+               CONTACT
+            --------------------------------------------- */
+
+            if (item.id === "contact") {
+              return (
+                <Link
+                  key={item.id}
+                  to="/contact"
+                  onClick={closeMenu}
+                  className={getNavClass(isActive)}
+                >
+                  {item.label}
+
+                  {isActive && <ActiveIndicator />}
+                </Link>
+              );
+            }
+
+            /* ---------------------------------------------
+               HOME SECTIONS
+            --------------------------------------------- */
 
             return (
               <button
@@ -222,61 +317,19 @@ const PublicNavbar = () => {
                 onClick={() =>
                   handleSectionClick(item.id)
                 }
-                className={`
-                  relative
-                  rounded-[7px]
-                  px-3.5
-                  py-2
-                  text-[13px]
-                  font-medium
-                  transition-all
-                  duration-300
-
-                  ${
-                    isActive
-                      ? `
-                        bg-[#E8F2FF]
-                        text-[#0B5A96]
-                        shadow-[0_3px_12px_rgba(40,121,215,0.08)]
-                      `
-                      : `
-                        text-[#30465B]
-                        hover:bg-[#F0F5FA]
-                        hover:text-[#0B5A96]
-                      `
-                  }
-                `}
+                className={getNavClass(isActive)}
               >
-
                 {item.label}
 
-                {/* Active indicator */}
-
-                {isActive && (
-                  <span
-                    className="
-                      absolute
-                      bottom-[3px]
-                      left-1/2
-                      h-[2px]
-                      w-[16px]
-                      -translate-x-1/2
-                      rounded-full
-                      bg-[#2879D7]
-                    "
-                  />
-                )}
-
+                {isActive && <ActiveIndicator />}
               </button>
             );
           })}
-
         </nav>
-
 
         {/* =================================================
             DESKTOP ACTIONS
-        ================================================= */}
+        ================================================== */}
 
         <div
           className="
@@ -286,7 +339,6 @@ const PublicNavbar = () => {
             md:flex
           "
         >
-
           <Link
             to="/login"
             className="
@@ -312,7 +364,6 @@ const PublicNavbar = () => {
             Login
           </Link>
 
-
           <Link
             to="/register"
             className="
@@ -336,18 +387,19 @@ const PublicNavbar = () => {
           >
             Get Started
           </Link>
-
         </div>
-
 
         {/* =================================================
             MOBILE MENU BUTTON
-        ================================================= */}
+        ================================================== */}
 
         <button
           type="button"
-          onClick={() => setMenuOpen(!menuOpen)}
+          onClick={() =>
+            setMenuOpen((current) => !current)
+          }
           aria-label="Toggle navigation menu"
+          aria-expanded={menuOpen}
           className="
             flex
             h-9
@@ -364,7 +416,6 @@ const PublicNavbar = () => {
             md:hidden
           "
         >
-
           {menuOpen ? (
             <X
               size={19}
@@ -378,15 +429,12 @@ const PublicNavbar = () => {
               className="text-[#173B5C]"
             />
           )}
-
         </button>
-
       </div>
-
 
       {/* =================================================
           MOBILE MENU
-      ================================================= */}
+      ================================================== */}
 
       {menuOpen && (
         <div
@@ -401,12 +449,62 @@ const PublicNavbar = () => {
             md:hidden
           "
         >
-
           <div className="flex flex-col gap-1">
 
             {navItems.map((item) => {
               const isActive =
                 activeSection === item.id;
+
+              /* -------------------------------------------
+                 MOBILE CONTACT
+              ------------------------------------------- */
+
+              if (item.id === "contact") {
+                return (
+                  <Link
+                    key={item.id}
+                    to="/contact"
+                    onClick={closeMenu}
+                    className={`
+                      flex
+                      w-full
+                      items-center
+                      rounded-[8px]
+                      px-3.5
+                      py-3
+                      text-left
+                      text-[13px]
+                      font-medium
+                      transition-all
+                      duration-200
+
+                      ${
+                        isActive
+                          ? "bg-[#E8F2FF] text-[#0B5A96]"
+                          : "text-[#30465B] hover:bg-[#F5F8FB]"
+                      }
+                    `}
+                  >
+                    {item.label}
+
+                    {isActive && (
+                      <span
+                        className="
+                          ml-auto
+                          h-2
+                          w-2
+                          rounded-full
+                          bg-[#2879D7]
+                        "
+                      />
+                    )}
+                  </Link>
+                );
+              }
+
+              /* -------------------------------------------
+                 MOBILE HOME SECTIONS
+              ------------------------------------------- */
 
               return (
                 <button
@@ -452,8 +550,9 @@ const PublicNavbar = () => {
               );
             })}
 
-
-            {/* Mobile Actions */}
+            {/* =================================================
+                MOBILE ACTIONS
+            ================================================== */}
 
             <div
               className="
@@ -465,12 +564,9 @@ const PublicNavbar = () => {
                 pt-4
               "
             >
-
               <Link
                 to="/login"
-                onClick={() =>
-                  setMenuOpen(false)
-                }
+                onClick={closeMenu}
                 className="
                   flex
                   h-[40px]
@@ -488,12 +584,9 @@ const PublicNavbar = () => {
                 Login
               </Link>
 
-
               <Link
                 to="/register"
-                onClick={() =>
-                  setMenuOpen(false)
-                }
+                onClick={closeMenu}
                 className="
                   flex
                   h-[40px]
@@ -509,14 +602,10 @@ const PublicNavbar = () => {
               >
                 Get Started
               </Link>
-
             </div>
-
           </div>
-
         </div>
       )}
-
     </header>
   );
 };

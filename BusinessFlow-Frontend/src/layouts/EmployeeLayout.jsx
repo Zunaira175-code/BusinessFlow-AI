@@ -2,7 +2,7 @@ import { Outlet } from "react-router-dom";
 
 import EmployeeSidebar from "../layout/EmployeeSidebar";
 import EmployeeHeader from "../layout/EmployeeHeader";
-import Footer from "../layout/footer";
+import DashboardFooter from "../layout/DashboardFooter";
 
 const EmployeeLayout = () => {
   return (
@@ -22,9 +22,9 @@ const EmployeeLayout = () => {
           <Outlet />
         </main>
 
-        {/* Footer */}
-        <Footer />
-
+       
+        {/* Dashboard Footer */}
+        <DashboardFooter />
       </div>
     </div>
   );

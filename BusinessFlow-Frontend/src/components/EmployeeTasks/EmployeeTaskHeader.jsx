@@ -1,9 +1,28 @@
 import { Plus } from "lucide-react";
 
-const EmployeeTaskHeader = ({ onAddTask }) => {
+const EmployeeTaskHeader = ({
+  onAddTask,
+}) => {
+  const handleAddTask = () => {
+    if (typeof onAddTask === "function") {
+      onAddTask();
+      return;
+    }
+
+    // Fallback event for global task modal handling
+    window.dispatchEvent(
+      new Event(
+        "businessflow-open-create-task"
+      )
+    );
+  };
+
   return (
     <div className="flex w-full items-start justify-between">
-      {/* Left Content */}
+      {/* =====================================================
+          LEFT CONTENT
+      ====================================================== */}
+
       <div>
         <h1
           className="
@@ -29,10 +48,13 @@ const EmployeeTaskHeader = ({ onAddTask }) => {
         </p>
       </div>
 
-      {/* Add Task Button */}
+      {/* =====================================================
+          ADD TASK BUTTON
+      ====================================================== */}
+
       <button
         type="button"
-        onClick={onAddTask}
+        onClick={handleAddTask}
         className="
           flex
           h-[30px]
@@ -48,6 +70,7 @@ const EmployeeTaskHeader = ({ onAddTask }) => {
           transition-colors
           duration-200
           hover:bg-[#082F54]
+          active:scale-[0.98]
         "
       >
         <Plus
@@ -55,7 +78,9 @@ const EmployeeTaskHeader = ({ onAddTask }) => {
           strokeWidth={2}
         />
 
-        <span>Add Task</span>
+        <span>
+          Add Task
+        </span>
       </button>
     </div>
   );

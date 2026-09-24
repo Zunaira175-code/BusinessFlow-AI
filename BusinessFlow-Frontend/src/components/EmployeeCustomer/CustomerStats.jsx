@@ -1,46 +1,150 @@
+import { useEffect, useState } from "react";
 import {
   UsersRound,
   UserCheck,
   Clock3,
   CircleAlert,
-  TrendingUp,
 } from "lucide-react";
 
-const stats = [
-  {
-    label: "MY CUSTOMERS",
-    value: "126",
-    description: "12 new this month",
-    icon: UsersRound,
-    type: "positive",
-  },
-  {
-    label: "ACTIVE CUSTOMERS",
-    value: "98",
-    description: "78% of total",
-    icon: UserCheck,
-    type: "neutral",
-  },
-  {
-    label: "FOLLOW-UPS DUE",
-    value: "14",
-    description: "5 due today",
-    icon: Clock3,
-    type: "warning",
-  },
-  {
-    label: "AT RISK",
-    value: "7",
-    description: "Requires attention",
-    icon: CircleAlert,
-    type: "danger",
-  },
-];
+const API_URL = "http://localhost:5000/api";
 
 const CustomerStats = () => {
+  const [stats, setStats] = useState({
+    myCustomers: 0,
+    activeCustomers: 0,
+    followUpsDue: 0,
+    followUpsToday: 0,
+    atRisk: 0,
+    newThisMonth: 0,
+  });
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const token = localStorage.getItem(
+        "businessflow_token"
+      );
+
+      if (!token) {
+        setError("Authentication required.");
+        return;
+      }
+
+      const response = await fetch(
+        `${API_URL}/customers/me/stats`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message ||
+            "Failed to fetch customer stats."
+        );
+      }
+
+      setStats({
+        myCustomers:
+          Number(result.data?.myCustomers) || 0,
+
+        activeCustomers:
+          Number(result.data?.activeCustomers) || 0,
+
+        followUpsDue:
+          Number(result.data?.followUpsDue) || 0,
+
+        followUpsToday:
+          Number(result.data?.followUpsToday) || 0,
+
+        atRisk:
+          Number(result.data?.atRisk) || 0,
+
+        newThisMonth:
+          Number(result.data?.newThisMonth) || 0,
+      });
+    } catch (err) {
+      console.error(
+        "Customer Stats Error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Failed to fetch customer stats."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const activePercentage =
+    stats.myCustomers > 0
+      ? Math.round(
+          (stats.activeCustomers /
+            stats.myCustomers) *
+            100
+        )
+      : 0;
+
+  const statsData = [
+    {
+      label: "MY CUSTOMERS",
+      value: stats.myCustomers,
+      description:
+        stats.newThisMonth > 0
+          ? `${stats.newThisMonth} new this month`
+          : "No new this month",
+      icon: UsersRound,
+      type: "positive",
+    },
+    {
+      label: "ACTIVE CUSTOMERS",
+      value: stats.activeCustomers,
+      description: `${activePercentage}% of total`,
+      icon: UserCheck,
+      type: "neutral",
+    },
+    {
+      label: "FOLLOW-UPS DUE",
+      value: stats.followUpsDue,
+      description:
+        stats.followUpsToday > 0
+          ? `${stats.followUpsToday} due today`
+          : "Nothing due today",
+      icon: Clock3,
+      type: "warning",
+    },
+    {
+      label: "AT RISK",
+      value: stats.atRisk,
+      description:
+        stats.atRisk > 0
+          ? "Requires attention"
+          : "No customers at risk",
+      icon: CircleAlert,
+      type: "danger",
+    },
+  ];
+
   return (
     <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {stats.map((stat) => {
+      {statsData.map((stat) => {
         const Icon = stat.icon;
 
         const descriptionClass =
@@ -75,7 +179,14 @@ const CustomerStats = () => {
               shadow-[0_1px_2px_rgba(7,29,53,0.03)]
             "
           >
-            <p className="text-[8px] font-semibold tracking-[0.2px] text-[#60758A]">
+            <p
+              className="
+                text-[8px]
+                font-semibold
+                tracking-[0.2px]
+                text-[#60758A]
+              "
+            >
               {stat.label}
             </p>
 
@@ -95,7 +206,7 @@ const CustomerStats = () => {
                   }
                 `}
               >
-                {stat.value}
+                {loading ? "—" : stat.value}
               </p>
             </div>
 
@@ -107,9 +218,17 @@ const CustomerStats = () => {
               />
 
               <span
-                className={`text-[7px] font-medium ${descriptionClass}`}
+                className={`
+                  text-[7px]
+                  font-medium
+                  ${descriptionClass}
+                `}
               >
-                {stat.description}
+                {loading
+                  ? "Loading..."
+                  : error
+                    ? "Unable to load"
+                    : stat.description}
               </span>
             </div>
           </div>

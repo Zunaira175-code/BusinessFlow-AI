@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import {
   CircleCheck,
   Phone,
@@ -6,35 +8,12 @@ import {
 } from "lucide-react";
 
 /* =========================================================
-   ACTIVITY DATA
+   API
 ========================================================= */
 
-const activities = [
-  {
-    id: 1,
-    type: "qualified",
-    title: "Sarah Johnson moved to Qualified",
-    time: "Today, 10:45 AM",
-  },
-  {
-    id: 2,
-    type: "followup",
-    title: "Follow-up logged for Michael Davis",
-    time: "Today, 09:15 AM",
-  },
-  {
-    id: 3,
-    type: "assigned",
-    title: "New lead Emma Wilson assigned to you",
-    time: "Yesterday, 04:30 PM",
-  },
-  {
-    id: 4,
-    type: "proposal",
-    title: "Proposal sent to Daniel Brown",
-    time: "Yesterday, 11:20 AM",
-  },
-];
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000";
 
 /* =========================================================
    ACTIVITY ICON
@@ -67,7 +46,10 @@ const ActivityIcon = ({ type }) => {
     },
   };
 
-  const current = config[type] || config.qualified;
+  const current =
+    config[type] ||
+    config.qualified;
+
   const Icon = current.icon;
 
   return (
@@ -95,10 +77,226 @@ const ActivityIcon = ({ type }) => {
 };
 
 /* =========================================================
+   FORMAT TIME
+========================================================= */
+
+const formatActivityTime = (
+  dateValue
+) => {
+  if (!dateValue) {
+    return "Recently";
+  }
+
+  const date = new Date(
+    dateValue
+  );
+
+  if (
+    Number.isNaN(date.getTime())
+  ) {
+    return "Recently";
+  }
+
+  const now = new Date();
+
+  const diff =
+    now.getTime() -
+    date.getTime();
+
+  const minute =
+    60 * 1000;
+
+  const hour =
+    60 * minute;
+
+  const day =
+    24 * hour;
+
+  if (diff < minute) {
+    return "Just now";
+  }
+
+  if (diff < hour) {
+    const minutes = Math.floor(
+      diff / minute
+    );
+
+    return `${minutes} ${
+      minutes === 1
+        ? "minute"
+        : "minutes"
+    } ago`;
+  }
+
+  if (diff < day) {
+    const hours = Math.floor(
+      diff / hour
+    );
+
+    return `${hours} ${
+      hours === 1
+        ? "hour"
+        : "hours"
+    } ago`;
+  }
+
+  const yesterdayStart =
+    new Date(now);
+
+  yesterdayStart.setDate(
+    now.getDate() - 1
+  );
+
+  yesterdayStart.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const activityDate =
+    new Date(date);
+
+  if (
+    activityDate >=
+    yesterdayStart
+  ) {
+    return `Yesterday, ${activityDate.toLocaleTimeString(
+      [],
+      {
+        hour: "numeric",
+        minute: "2-digit",
+      }
+    )}`;
+  }
+
+  return activityDate.toLocaleDateString(
+    [],
+    {
+      month: "short",
+      day: "numeric",
+      year:
+        activityDate.getFullYear() !==
+        now.getFullYear()
+          ? "numeric"
+          : undefined,
+    }
+  );
+};
+
+/* =========================================================
    LEAD ACTIVITY
 ========================================================= */
 
 const LeadActivity = () => {
+  const [activities, setActivities] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  /* =========================================================
+     FETCH ACTIVITY
+  ========================================================= */
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchActivity =
+      async () => {
+        try {
+          setLoading(true);
+          setError("");
+
+          const token =
+            localStorage.getItem(
+              "businessflow_token"
+            );
+
+          if (!token) {
+            throw new Error(
+              "Authentication token not found."
+            );
+          }
+
+          const response =
+            await fetch(
+              `${API_BASE_URL}/api/leads/me/activity?limit=5`,
+              {
+                method: "GET",
+
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type":
+                    "application/json",
+                },
+              }
+            );
+
+          const result =
+            await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              result?.message ||
+                "Unable to fetch lead activity."
+            );
+          }
+
+          if (
+            !result?.success ||
+            !result?.data
+          ) {
+            throw new Error(
+              "Invalid lead activity response."
+            );
+          }
+
+          const activityList =
+            Array.isArray(
+              result.data.activities
+            )
+              ? result.data.activities
+              : [];
+
+          if (isMounted) {
+            setActivities(
+              activityList
+            );
+          }
+        } catch (err) {
+          console.error(
+            "Employee Lead Activity Error:",
+            err
+          );
+
+          if (isMounted) {
+            setError(
+              err.message ||
+                "Unable to load lead activity."
+            );
+          }
+        } finally {
+          if (isMounted) {
+            setLoading(false);
+          }
+        }
+      };
+
+    fetchActivity();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /* =========================================================
+     RENDER
+  ========================================================= */
+
   return (
     <div
       className="
@@ -143,58 +341,182 @@ const LeadActivity = () => {
 
       <div className="relative mt-3">
         {/* Timeline Line */}
-        <div
-          className="
-            absolute
-            bottom-[11px]
-            left-[10px]
-            top-[11px]
-            w-px
-            bg-[#C9DDF3]
-          "
-        />
 
-        <div className="space-y-4">
-          {activities.map((activity) => (
+        {!loading &&
+          activities.length > 0 && (
             <div
-              key={activity.id}
               className="
-                relative
-                flex
-                items-start
-                gap-3
+                absolute
+                bottom-[11px]
+                left-[10px]
+                top-[11px]
+                w-px
+                bg-[#C9DDF3]
+              "
+            />
+          )}
+
+        {/* =================================================
+            LOADING
+        ================================================== */}
+
+        {loading && (
+          <div className="space-y-4">
+            {[1, 2, 3, 4].map(
+              (item) => (
+                <div
+                  key={item}
+                  className="
+                    flex
+                    items-start
+                    gap-3
+                  "
+                >
+                  <div
+                    className="
+                      h-[22px]
+                      w-[22px]
+                      shrink-0
+                      animate-pulse
+                      rounded-full
+                      bg-[#EAF1F7]
+                    "
+                  />
+
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className="
+                        h-[9px]
+                        w-[65%]
+                        animate-pulse
+                        rounded
+                        bg-[#EAF1F7]
+                      "
+                    />
+
+                    <div
+                      className="
+                        mt-2
+                        h-[7px]
+                        w-[30%]
+                        animate-pulse
+                        rounded
+                        bg-[#F0F4F7]
+                      "
+                    />
+                  </div>
+                </div>
+              )
+            )}
+          </div>
+        )}
+
+        {/* =================================================
+            ERROR
+        ================================================== */}
+
+        {!loading &&
+          error && (
+            <div
+              className="
+                py-5
+                text-center
+                text-[8px]
+                font-medium
+                text-[#DC2626]
               "
             >
-              {/* Icon */}
-              <ActivityIcon type={activity.type} />
-
-              {/* Content */}
-              <div className="min-w-0 flex-1 pt-[1px]">
-                <p
-                  className="
-                    text-[8px]
-                    font-semibold
-                    leading-[12px]
-                    text-[#17324D]
-                  "
-                >
-                  {activity.title}
-                </p>
-
-                <p
-                  className="
-                    mt-[2px]
-                    text-[7px]
-                    leading-[10px]
-                    text-[#718599]
-                  "
-                >
-                  {activity.time}
-                </p>
-              </div>
+              Unable to load lead activity.
             </div>
-          ))}
-        </div>
+          )}
+
+        {/* =================================================
+            EMPTY
+        ================================================== */}
+
+        {!loading &&
+          !error &&
+          activities.length ===
+            0 && (
+            <div
+              className="
+                py-6
+                text-center
+                text-[8px]
+                font-medium
+                text-[#718599]
+              "
+            >
+              No lead activity yet.
+            </div>
+          )}
+
+        {/* =================================================
+            ACTIVITY ITEMS
+        ================================================== */}
+
+        {!loading &&
+          !error &&
+          activities.length >
+            0 && (
+            <div className="space-y-4">
+              {activities.map(
+                (
+                  activity,
+                  index
+                ) => (
+                  <div
+                    key={
+                      activity.id ||
+                      index
+                    }
+                    className="
+                      relative
+                      flex
+                      items-start
+                      gap-3
+                    "
+                  >
+                    {/* Icon */}
+
+                    <ActivityIcon
+                      type={
+                        activity.type
+                      }
+                    />
+
+                    {/* Content */}
+
+                    <div className="min-w-0 flex-1 pt-[1px]">
+                      <p
+                        className="
+                          text-[8px]
+                          font-semibold
+                          leading-[12px]
+                          text-[#17324D]
+                        "
+                      >
+                        {activity.title}
+                      </p>
+
+                      <p
+                        className="
+                          mt-[2px]
+                          text-[7px]
+                          leading-[10px]
+                          text-[#718599]
+                        "
+                      >
+                        {formatActivityTime(
+                          activity.time
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          )}
       </div>
     </div>
   );

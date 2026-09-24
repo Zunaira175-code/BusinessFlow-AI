@@ -1,7 +1,10 @@
+import { Link } from "react-router-dom";
+
 const EmployeesHeader = () => {
   return (
     <section className="w-full">
       <div className="flex items-start justify-between gap-6">
+
         {/* Left */}
         <div>
           <h1 className="text-[22px] font-bold leading-[28px] text-[#071D35]">
@@ -15,6 +18,7 @@ const EmployeesHeader = () => {
 
         {/* Right Actions */}
         <div className="flex shrink-0 items-center gap-2 pt-[2px]">
+
           {/* Export */}
           <button
             type="button"
@@ -53,9 +57,9 @@ const EmployeesHeader = () => {
           </button>
 
           {/* Add Employee */}
-          <button
-            type="button"
-            className="flex h-[27px] items-center gap-2 rounded-[6px] bg-[#061C35] px-3 text-[9px] font-semibold text-white transition hover:bg-[#0B3155]"
+          <Link
+            to="/admin/employees/add"
+            className="flex h-[27px] items-center gap-2 rounded-[6px] bg-[#061C35] px-3 text-[9px] font-semibold text-white transition hover:bg-[#0B3155] active:scale-[0.98]"
           >
             <svg
               width="11"
@@ -94,7 +98,8 @@ const EmployeesHeader = () => {
             </svg>
 
             Add Employee
-          </button>
+          </Link>
+
         </div>
       </div>
     </section>

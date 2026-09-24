@@ -29,10 +29,7 @@ const tabs = [
     label: "AI Preferences",
     path: "/admin/settings/ai-preferences",
   },
-  {
-    label: "Billing",
-    path: "/admin/settings/billing",
-  },
+
 ];
 
 const SettingsTabs = () => {

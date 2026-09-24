@@ -3,6 +3,7 @@ import { Sparkles, TrendingUp } from "lucide-react";
 import Card from "../common/Card";
 import Button from "../common/button";
 
+
 const insights = [
   {
     score: "92%",

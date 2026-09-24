@@ -4,7 +4,18 @@ import {
   UserPlus,
 } from "lucide-react";
 
-const CustomersHeader = () => {
+const CustomersHeader = ({
+  onAddCustomer,
+  onExport,
+  dateFilter = "month",
+  onDateFilterChange,
+}) => {
+  const handleDateFilter = (value) => {
+    if (onDateFilterChange) {
+      onDateFilterChange(value);
+    }
+  };
+
   return (
     <section className="w-full">
       <div className="flex w-full items-start justify-between">
@@ -12,6 +23,7 @@ const CustomersHeader = () => {
         {/* =====================================================
             LEFT — TITLE & DESCRIPTION
         ====================================================== */}
+
         <div>
           <h1
             className="
@@ -43,9 +55,13 @@ const CustomersHeader = () => {
         {/* =====================================================
             RIGHT — FILTERS & ACTIONS
         ====================================================== */}
+
         <div className="flex items-center gap-[7px] pt-[3px]">
 
-          {/* Date Filter */}
+          {/* =================================================
+              DATE FILTER
+          ================================================== */}
+
           <div
             className="
               flex
@@ -58,50 +74,71 @@ const CustomersHeader = () => {
               bg-white
             "
           >
+
             {/* Last 7 Days */}
+
             <button
               type="button"
-              className="
+              onClick={() =>
+                handleDateFilter("7days")
+              }
+              className={`
                 h-full
                 whitespace-nowrap
                 px-[12px]
                 text-[9px]
                 font-medium
-                text-[#526A80]
                 transition-colors
-                hover:bg-[#F7F9FC]
-              "
+                ${
+                  dateFilter === "7days"
+                    ? "bg-[#EEF4FC] font-semibold text-[#173B5C]"
+                    : "text-[#526A80] hover:bg-[#F7F9FC]"
+                }
+              `}
             >
               Last 7 Days
             </button>
 
             {/* Divider */}
+
             <span className="h-[19px] w-px bg-[#E1E7ED]" />
 
             {/* This Month */}
+
             <button
               type="button"
-              className="
+              onClick={() =>
+                handleDateFilter("month")
+              }
+              className={`
                 h-[27px]
                 whitespace-nowrap
                 rounded-[5px]
-                bg-[#EEF4FC]
                 px-[12px]
                 text-[9px]
-                font-semibold
-                text-[#173B5C]
-              "
+                transition-colors
+                ${
+                  dateFilter === "month"
+                    ? "bg-[#EEF4FC] font-semibold text-[#173B5C]"
+                    : "font-medium text-[#526A80] hover:bg-[#F7F9FC]"
+                }
+              `}
             >
               This Month
             </button>
 
             {/* Divider */}
+
             <span className="h-[19px] w-px bg-[#E1E7ED]" />
 
             {/* Custom */}
+
             <button
               type="button"
-              className="
+              onClick={() =>
+                handleDateFilter("custom")
+              }
+              className={`
                 flex
                 h-full
                 items-center
@@ -109,11 +146,13 @@ const CustomersHeader = () => {
                 whitespace-nowrap
                 px-[11px]
                 text-[9px]
-                font-medium
-                text-[#526A80]
                 transition-colors
-                hover:bg-[#F7F9FC]
-              "
+                ${
+                  dateFilter === "custom"
+                    ? "bg-[#EEF4FC] font-semibold text-[#173B5C]"
+                    : "font-medium text-[#526A80] hover:bg-[#F7F9FC]"
+                }
+              `}
             >
               <CalendarDays
                 size={11}
@@ -127,8 +166,10 @@ const CustomersHeader = () => {
           {/* =================================================
               EXPORT
           ================================================== */}
+
           <button
             type="button"
+            onClick={onExport}
             className="
               flex
               h-[35px]
@@ -145,8 +186,8 @@ const CustomersHeader = () => {
               shadow-[0_1px_2px_rgba(16,47,74,0.03)]
               transition-all
               duration-200
-              hover:bg-[#F7F9FC]
               hover:border-[#C9D6E2]
+              hover:bg-[#F7F9FC]
             "
           >
             <Download
@@ -160,8 +201,10 @@ const CustomersHeader = () => {
           {/* =================================================
               ADD CUSTOMER
           ================================================== */}
+
           <button
             type="button"
+            onClick={onAddCustomer}
             className="
               flex
               h-[35px]

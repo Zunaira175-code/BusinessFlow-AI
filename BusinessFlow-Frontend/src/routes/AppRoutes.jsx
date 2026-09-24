@@ -12,6 +12,7 @@ import Dashboard from "../pages/admin/Dashboard";
 import Customers from "../pages/admin/Customers";
 import Deals from "../pages/admin/Deals";
 import Leads from "../pages/admin/Leads";
+import Tasks from "../pages/admin/Tasks";
 import Notifications from "../pages/admin/Notifications";
 import Reports from "../pages/admin/Reports";
 import Employees from "../pages/admin/Employees";
@@ -21,13 +22,13 @@ import Employees from "../pages/admin/Employees";
 // =====================================================
 
 import Settings from "../pages/admin/Settings";
-import BillingPlan from "../pages/admin/BillingPlanSetting";
 import Integrations from "../pages/admin/IntegrationSettings";
 import NotificationSettings from "../pages/admin/NotificationSettings";
 import SecuritySettingsPage from "../pages/admin/SecuritySetting";
 import TeamSettings from "../pages/admin/TeamSettings";
 import AIPreferences from "../pages/admin/AIPreferences";
 import AccountSettings from "../pages/admin/AccountSettings";
+import AddEmployee from "../pages/admin/AddEmployee";
 
 // =====================================================
 // EMPLOYEE PAGES
@@ -51,6 +52,13 @@ import Register from "../pages/Auth/Register";
 import Login from "../pages/Auth/Login";
 import ForgotPassword from "../pages/Auth/ForgotPassword";
 import CheckEmail from "../pages/Auth/CheckEmail";
+import ResetPassword from "../pages/Auth/ResetPassword";
+import VerifyingInvitation from "../pages/Auth/VerifyingInvitation";
+import ValidInvitation from "../pages/Auth/ValidInvitation";
+import CreatePassword from "../pages/Auth/CreatePassword";
+import Invitation from "../pages/Auth/Invitation";
+import ActivatingAccount from "../pages/Auth/ActivatingAccount";
+import AccountActivated from "../pages/Auth/AccountActivated";
 
 // =====================================================
 // PUBLIC PAGES
@@ -59,20 +67,25 @@ import CheckEmail from "../pages/Auth/CheckEmail";
 import PublicHome from "../pages/public/PublicHome";
 import ContactUs from "../pages/public/ContactUs";
 
-
 const AppRoutes = () => {
   return (
     <Routes>
 
       {/* =====================================================
-    PUBLIC ROUTES
-===================================================== */}
+          PUBLIC ROUTES
+      ===================================================== */}
 
-<Route element={<PublicLayout />}>
-  <Route path="/" element={<PublicHome />} />
-  <Route path="/contact" element={<ContactUs />} />
-</Route>
+      <Route element={<PublicLayout />}>
+        <Route
+          path="/"
+          element={<PublicHome />}
+        />
 
+        <Route
+          path="/contact"
+          element={<ContactUs />}
+        />
+      </Route>
 
       {/* =====================================================
           AUTH ROUTES
@@ -98,6 +111,45 @@ const AppRoutes = () => {
         element={<CheckEmail />}
       />
 
+      <Route
+        path="/reset-password"
+        element={<ResetPassword />}
+      />
+
+      <Route
+        path="/verify-invitation"
+        element={<VerifyingInvitation />}
+      />
+
+      <Route
+        path="/invitation"
+        element={<Invitation />}
+      />
+
+      <Route
+        path="/invitation/valid"
+        element={<ValidInvitation />}
+      />
+
+      <Route
+        path="/accept-invitation/:token"
+        element={<VerifyingInvitation />}
+      />
+
+      <Route
+        path="/create-password"
+        element={<CreatePassword />}
+      />
+
+      <Route
+        path="/activating-account"
+        element={<ActivatingAccount />}
+      />
+
+      <Route
+        path="/account-activated"
+        element={<AccountActivated />}
+      />
 
       {/* =====================================================
           ADMIN LAYOUT
@@ -128,8 +180,22 @@ const AppRoutes = () => {
         />
 
         <Route
+          path="/admin/employees/add"
+          element={<AddEmployee />}
+        />
+
+        <Route
           path="/admin/leads"
           element={<Leads />}
+        />
+
+        {/* =================================================
+            ADMIN TASKS
+        ================================================= */}
+
+        <Route
+          path="/admin/tasks"
+          element={<Tasks />}
         />
 
         <Route
@@ -141,7 +207,6 @@ const AppRoutes = () => {
           path="/admin/reports"
           element={<Reports />}
         />
-
 
         {/* =================================================
             ADMIN SETTINGS
@@ -182,13 +247,9 @@ const AppRoutes = () => {
           element={<AIPreferences />}
         />
 
-        <Route
-          path="/admin/settings/billing"
-          element={<BillingPlan />}
-        />
+    
 
       </Route>
-
 
       {/* =====================================================
           EMPLOYEE LAYOUT

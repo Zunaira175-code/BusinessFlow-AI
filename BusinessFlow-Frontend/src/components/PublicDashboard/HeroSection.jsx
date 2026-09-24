@@ -4,6 +4,7 @@ import {
     Sparkles,
 } from "lucide-react";
 
+
 import { Link } from "react-router-dom";
 
 import {
@@ -481,7 +482,7 @@ const HeroSection = () => {
 
 
                         {/* =================================================
-                TRUST POINTS
+               // TRUST POINTS
             ================================================= */}
 
                         <motion.div

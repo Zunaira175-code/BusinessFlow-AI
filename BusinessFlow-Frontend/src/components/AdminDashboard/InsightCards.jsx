@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useState } from "react";
+
 import {
   CircleAlert,
   CircleCheck,
@@ -6,32 +8,25 @@ import {
 
 import Card from "../common/Card";
 
-const insights = [
-  {
-    type: "info",
-    title: "Lead Prioritization",
-    description:
-      "Focus on Global Dynamics and Nexus Industries today. Their engagement scores are in the top 5% across your pipeline.",
-    action: "Review top leads",
-    icon: Info,
-  },
-  {
-    type: "warning",
-    title: "Deal Risk Alert",
-    description:
-      "The Acme Corp renewal is at risk. 14 days since last contact and usage metrics show a 20% week-over-week decline.",
-    action: "View risk details",
-    icon: CircleAlert,
-  },
-  {
-    type: "success",
-    title: "Optimal Follow-up",
-    description:
-      "TechFlow decision makers typically open emails between 2 PM and 4 PM on Tuesdays. Draft your proposal now.",
-    action: "Schedule email",
-    icon: CircleCheck,
-  },
-];
+// =====================================================
+// API
+// =====================================================
+
+const API_URL = "http://localhost:5000/api";
+
+// =====================================================
+// ICON MAP
+// =====================================================
+
+const iconMap = {
+  info: Info,
+  warning: CircleAlert,
+  success: CircleCheck,
+};
+
+// =====================================================
+// STYLES
+// =====================================================
 
 const styles = {
   info: {
@@ -59,16 +54,309 @@ const styles = {
   },
 };
 
+// =====================================================
+// COMPONENT
+// =====================================================
+
 const InsightCards = () => {
+  const [insights, setInsights] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // =====================================================
+  // FETCH INSIGHTS
+  // =====================================================
+
+  const fetchInsights = useCallback(
+    async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const token =
+          localStorage.getItem(
+            "businessflow_token"
+          );
+
+        if (!token) {
+          throw new Error(
+            "Authentication token is missing. Please login again."
+          );
+        }
+
+        const response = await fetch(
+          `${API_URL}/admin/dashboard/insights`,
+          {
+            method: "GET",
+
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type":
+                "application/json",
+            },
+          }
+        );
+
+        const result =
+          await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.message ||
+              "Failed to fetch dashboard insights."
+          );
+        }
+
+        setInsights(
+          Array.isArray(
+            result.data?.insights
+          )
+            ? result.data.insights
+            : []
+        );
+      } catch (err) {
+        console.error(
+          "Insight Cards Error:",
+          err
+        );
+
+        setError(
+          err.message ||
+            "Unable to load dashboard insights."
+        );
+
+        setInsights([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  // =====================================================
+  // INITIAL LOAD
+  // =====================================================
+
+  useEffect(() => {
+    fetchInsights();
+  }, [fetchInsights]);
+
+  // =====================================================
+  // LOADING STATE
+  // =====================================================
+
+  if (loading) {
+    return (
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-3">
+        {[1, 2, 3].map((item) => (
+          <Card
+            key={item}
+            className="
+              h-[210px]
+              animate-pulse
+              overflow-hidden
+              rounded-[10px]
+              border-t-[3px]
+              border-t-[#DCEAF5]
+              bg-[#FAFCFF]
+              px-[22px]
+              py-[20px]
+            "
+          >
+            {/* Header Skeleton */}
+            <div className="flex items-center gap-3">
+              <div className="h-[36px] w-[36px] rounded-full bg-[#EAF1F6]" />
+
+              <div className="h-[15px] w-[130px] rounded bg-[#EAF1F6]" />
+            </div>
+
+            {/* Description Skeleton */}
+            <div className="mt-[16px] space-y-2">
+              <div className="h-[10px] w-full rounded bg-[#EAF1F6]" />
+              <div className="h-[10px] w-[90%] rounded bg-[#EAF1F6]" />
+              <div className="h-[10px] w-[75%] rounded bg-[#EAF1F6]" />
+            </div>
+
+            {/* Button Skeleton */}
+            <div className="mt-[18px] h-[12px] w-[100px] rounded bg-[#EAF1F6]" />
+          </Card>
+        ))}
+      </section>
+    );
+  }
+
+  // =====================================================
+  // ERROR STATE
+  // =====================================================
+
+  if (error) {
+    return (
+      <section className="w-full">
+        <Card
+          className="
+            rounded-[10px]
+            border-t-[3px]
+            border-t-[#E9C17D]
+            bg-[#FAFCFF]
+            px-[22px]
+            py-[20px]
+          "
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="
+                flex
+                h-[36px]
+                w-[36px]
+                shrink-0
+                items-center
+                justify-center
+                rounded-full
+                border
+                border-[#F2D8AC]
+                bg-[#FFF8EC]
+                text-[#D99022]
+              "
+            >
+              <CircleAlert
+                size={17}
+                strokeWidth={2}
+              />
+            </div>
+
+            <h3
+              className="
+                text-[15px]
+                font-semibold
+                text-[#173750]
+              "
+            >
+              Unable to load insights
+            </h3>
+          </div>
+
+          <p
+            className="
+              mt-[13px]
+              text-[12px]
+              font-medium
+              leading-[19px]
+              text-[#63788B]
+            "
+          >
+            {error}
+          </p>
+
+          <button
+            type="button"
+            onClick={fetchInsights}
+            className="
+              mt-[16px]
+              text-[11px]
+              font-bold
+              text-[#1592D0]
+              transition-opacity
+              hover:opacity-70
+            "
+          >
+            Try again →
+          </button>
+        </Card>
+      </section>
+    );
+  }
+
+  // =====================================================
+  // EMPTY STATE
+  // =====================================================
+
+  if (insights.length === 0) {
+    return (
+      <section className="w-full">
+        <Card
+          className="
+            rounded-[10px]
+            border-t-[3px]
+            border-t-[#8BC9F4]
+            bg-[#FAFCFF]
+            px-[22px]
+            py-[20px]
+          "
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className="
+                flex
+                h-[36px]
+                w-[36px]
+                shrink-0
+                items-center
+                justify-center
+                rounded-full
+                border
+                border-[#B9E1FA]
+                bg-[#EAF6FF]
+                text-[#1592D0]
+              "
+            >
+              <Info
+                size={17}
+                strokeWidth={2}
+              />
+            </div>
+
+            <h3
+              className="
+                text-[15px]
+                font-semibold
+                text-[#173750]
+              "
+            >
+              No insights available
+            </h3>
+          </div>
+
+          <p
+            className="
+              mt-[13px]
+              text-[12px]
+              font-medium
+              leading-[19px]
+              text-[#63788B]
+            "
+          >
+            There are no dashboard insights
+            available right now.
+          </p>
+        </Card>
+      </section>
+    );
+  }
+
+  // =====================================================
+  // MAIN UI
+  // =====================================================
+
   return (
-    <section className="grid grid-cols-3 gap-5">
-      {insights.map((item) => {
-        const Icon = item.icon;
-        const style = styles[item.type];
+    <section className="grid grid-cols-1 gap-5 md:grid-cols-3">
+      {insights.map((item, index) => {
+        const type =
+          styles[item.type]
+            ? item.type
+            : "info";
+
+        const Icon =
+          iconMap[type] || Info;
+
+        const style =
+          styles[type];
 
         return (
           <Card
-            key={item.title}
+            key={
+              item.id ||
+              `${item.title}-${index}`
+            }
             className={`
               h-[210px]
               overflow-hidden
@@ -132,6 +420,13 @@ const InsightCards = () => {
             {/* Action */}
             <button
               type="button"
+              onClick={() => {
+                console.log(
+                  "Insight action:",
+                  item.action,
+                  item
+                );
+              }}
               className={`
                 mt-[16px]
                 text-[11px]

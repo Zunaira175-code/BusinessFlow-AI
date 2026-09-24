@@ -1,9 +1,85 @@
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 
+const API_URL = "http://localhost:5000/api";
+
 const EmployeeDashboardHeader = ({
-  employeeName = "Alex",
+  employeeName = "",
   onAddTask,
 }) => {
+  const [name, setName] = useState(employeeName || "Employee");
+  const [loading, setLoading] = useState(true);
+
+  // =====================================================
+  // GET LOGGED-IN USER
+  // =====================================================
+
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const token = localStorage.getItem("businessflow_token");
+
+        if (!token) {
+          setLoading(false);
+          return;
+        }
+
+        const response = await fetch(
+          `${API_URL}/auth/me`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const result = await response.json();
+
+        console.log(
+          "Employee Dashboard User Response:",
+          result
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            result?.message ||
+              "Unable to fetch current user."
+          );
+        }
+
+        const user = result?.data?.user;
+
+        // =================================================
+        // GET FIRST NAME
+        // =================================================
+
+        const firstName =
+          user?.firstName ||
+          user?.name?.split(" ")?.[0] ||
+          employeeName ||
+          "Employee";
+
+        setName(firstName);
+      } catch (error) {
+        console.error(
+          "Employee Dashboard User Error:",
+          error
+        );
+
+        // Fallback
+        setName(
+          employeeName || "Employee"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCurrentUser();
+  }, [employeeName]);
+
   return (
     <div className="flex w-full items-start justify-between">
       {/* Left Content */}
@@ -17,7 +93,8 @@ const EmployeeDashboardHeader = ({
             text-[#071D35]
           "
         >
-          Good morning, {employeeName}
+          Good morning,{" "}
+          {loading ? "..." : name}
         </h1>
 
         <p

@@ -2,11 +2,16 @@ import {
   Search,
   SlidersHorizontal,
   ChevronDown,
+  X,
 } from "lucide-react";
 
 const CustomerFilters = ({
-  search,
+  search = "",
   setSearch,
+  status = "",
+  setStatus,
+  sort = "recent",
+  setSort,
 }) => {
   return (
     <div
@@ -25,7 +30,10 @@ const CustomerFilters = ({
         py-3
       "
     >
-      {/* Search */}
+      {/* =====================================================
+          SEARCH
+      ====================================================== */}
+
       <div
         className="
           flex
@@ -50,7 +58,9 @@ const CustomerFilters = ({
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) =>
+            setSearch?.(e.target.value)
+          }
           placeholder="Search customers..."
           className="
             w-full
@@ -61,15 +71,124 @@ const CustomerFilters = ({
             placeholder:text-[#8495A5]
           "
         />
+
+        {search && (
+          <button
+            type="button"
+            onClick={() =>
+              setSearch?.("")
+            }
+            className="
+              flex
+              h-4
+              w-4
+              shrink-0
+              items-center
+              justify-center
+              rounded-full
+              text-[#8495A5]
+              hover:bg-[#EAF0F5]
+              hover:text-[#17324D]
+            "
+            aria-label="Clear search"
+          >
+            <X
+              size={10}
+              strokeWidth={2}
+            />
+          </button>
+        )}
       </div>
 
-      {/* Filters */}
+      {/* =====================================================
+          FILTERS
+      ====================================================== */}
+
       <div className="flex shrink-0 flex-wrap items-center gap-2">
-        <FilterButton label="Status: All" />
+        {/* STATUS */}
 
-        <FilterButton label="Type: All" />
+        <FilterButton
+          label={
+            status
+              ? `Status: ${status}`
+              : "Status: All"
+          }
+          value={status}
+          options={[
+            {
+              label: "All",
+              value: "",
+            },
+            {
+              label: "Active",
+              value: "Active",
+            },
+            {
+              label: "Pending",
+              value: "Pending",
+            },
+            {
+              label: "Inactive",
+              value: "Inactive",
+            },
+          ]}
+          onChange={setStatus}
+        />
 
-        <FilterButton label="Sort by: Recently Updated" />
+        {/* TYPE */}
+
+        <FilterButton
+          label="Type: All"
+          value=""
+          options={[
+            {
+              label: "All",
+              value: "",
+            },
+          ]}
+          onChange={() => {}}
+        />
+
+        {/* SORT */}
+
+        <FilterButton
+          label={
+            sort === "oldest"
+              ? "Sort by: Oldest"
+              : sort === "value-high"
+                ? "Sort by: Highest Value"
+                : sort === "value-low"
+                  ? "Sort by: Lowest Value"
+                  : "Sort by: Recently Updated"
+          }
+          value={sort}
+          options={[
+            {
+              label:
+                "Recently Updated",
+              value: "recent",
+            },
+            {
+              label: "Newest",
+              value: "newest",
+            },
+            {
+              label: "Oldest",
+              value: "oldest",
+            },
+            {
+              label: "Highest Value",
+              value: "value-high",
+            },
+            {
+              label: "Lowest Value",
+              value: "value-low",
+            },
+          ]}
+          onChange={setSort}
+        />
+
+        {/* MORE FILTERS */}
 
         <button
           type="button"
@@ -99,35 +218,64 @@ const CustomerFilters = ({
   );
 };
 
-const FilterButton = ({ label }) => {
+// =========================================================
+// FILTER BUTTON
+// =========================================================
+
+const FilterButton = ({
+  label,
+  options = [],
+  value,
+  onChange,
+}) => {
   return (
-    <button
-      type="button"
-      className="
-        flex
-        h-[30px]
-        items-center
-        gap-1
-        rounded-[6px]
-        border
-        border-[#DCE5ED]
-        bg-white
-        px-2.5
-        text-[8px]
-        font-medium
-        text-[#29465F]
-        transition-colors
-        hover:bg-[#F5F8FB]
-      "
-    >
-      <span>{label}</span>
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) =>
+          onChange?.(e.target.value)
+        }
+        className="
+          h-[30px]
+          appearance-none
+          rounded-[6px]
+          border
+          border-[#DCE5ED]
+          bg-white
+          px-2.5
+          pr-6
+          text-[8px]
+          font-medium
+          text-[#29465F]
+          outline-none
+          transition-colors
+          hover:bg-[#F5F8FB]
+          focus:border-[#A9D1FF]
+        "
+      >
+        {options.map((option) => (
+          <option
+            key={`${option.value}-${option.label}`}
+            value={option.value}
+          >
+            {option.label}
+          </option>
+        ))}
+      </select>
 
       <ChevronDown
         size={10}
         strokeWidth={1.8}
-        className="text-[#718599]"
+        className="
+          pointer-events-none
+          absolute
+          right-2
+          top-1/2
+          -translate-y-1/2
+          text-[#718599]
+        "
       />
-    </button>
+    </div>
   );
 };
 

@@ -14,7 +14,7 @@ const SettingsPageHeader = () => {
       </h1>
 
       <p className="mt-[22px] text-[10px] text-[#60758A]">
-        Manage your personal profile, preferences, notifications, and account security.
+        Customize your workspace and manage your account settings.
       </p>
     </div>
   );

@@ -1,31 +1,273 @@
-const stats = [
-  {
-    title: "MY DEALS",
-    value: "16",
-    description: "$84,500 total pipeline",
-    descriptionColor: "text-[#718599]",
-  },
-  {
-    title: "WON DEALS",
-    value: "8",
-    description: "$42,300 closed",
-    descriptionColor: "text-[#20A65A]",
-  },
-  {
-    title: "DEALS IN PROGRESS",
-    value: "12",
-    description: "$67,200 pipeline",
-    descriptionColor: "text-[#718599]",
-  },
-  {
-    title: "CLOSING THIS MONTH",
-    value: "5",
-    description: "$28,600 potential",
-    descriptionColor: "text-[#E87500]",
-  },
-];
+import { useEffect, useState } from "react";
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:5000";
 
 const DealStats = () => {
+  const [stats, setStats] = useState({
+    myDeals: {
+      value: 0,
+      pipelineValue: 0,
+    },
+    wonDeals: {
+      value: 0,
+      wonValue: 0,
+    },
+    dealsInProgress: {
+      value: 0,
+      pipelineValue: 0,
+    },
+    closingThisMonth: {
+      value: 0,
+      potentialValue: 0,
+    },
+  });
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // =====================================================
+  // FORMAT CURRENCY
+  // =====================================================
+
+  const formatCurrency = (value) => {
+    const amount = Number(value) || 0;
+
+    return `$${amount.toLocaleString("en-US", {
+      maximumFractionDigits: 0,
+    })}`;
+  };
+
+  // =====================================================
+  // FETCH EMPLOYEE DEAL STATS
+  // =====================================================
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchDealStats = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const token = localStorage.getItem(
+          "businessflow_token"
+        );
+
+        if (!token) {
+          throw new Error(
+            "Authentication token not found."
+          );
+        }
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/deals/me/stats`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result?.message ||
+              "Unable to fetch deal statistics."
+          );
+        }
+
+        if (
+          !result?.success ||
+          !result?.data
+        ) {
+          throw new Error(
+            "Invalid deal statistics response."
+          );
+        }
+
+        if (isMounted) {
+          setStats({
+            myDeals: {
+              value:
+                Number(
+                  result.data.myDeals?.value
+                ) || 0,
+
+              pipelineValue:
+                Number(
+                  result.data.myDeals
+                    ?.pipelineValue
+                ) || 0,
+            },
+
+            wonDeals: {
+              value:
+                Number(
+                  result.data.wonDeals?.value
+                ) || 0,
+
+              wonValue:
+                Number(
+                  result.data.wonDeals
+                    ?.wonValue
+                ) || 0,
+            },
+
+            dealsInProgress: {
+              value:
+                Number(
+                  result.data
+                    .dealsInProgress?.value
+                ) || 0,
+
+              pipelineValue:
+                Number(
+                  result.data
+                    .dealsInProgress
+                    ?.pipelineValue
+                ) || 0,
+            },
+
+            closingThisMonth: {
+              value:
+                Number(
+                  result.data
+                    .closingThisMonth?.value
+                ) || 0,
+
+              potentialValue:
+                Number(
+                  result.data
+                    .closingThisMonth
+                    ?.potentialValue
+                ) || 0,
+            },
+          });
+        }
+      } catch (err) {
+        console.error(
+          "Employee Deal Stats Error:",
+          err
+        );
+
+        if (isMounted) {
+          setError(
+            err.message ||
+              "Unable to load deal statistics."
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchDealStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // =====================================================
+  // DISPLAY VALUE
+  // =====================================================
+
+  const displayNumber = (value) => {
+    if (loading) {
+      return "—";
+    }
+
+    return value;
+  };
+
+  // =====================================================
+  // STATS CONFIG
+  // =====================================================
+
+  const statCards = [
+    {
+      title: "MY DEALS",
+
+      value: displayNumber(
+        stats.myDeals.value
+      ),
+
+      description: loading
+        ? "Loading..."
+        : `${formatCurrency(
+            stats.myDeals.pipelineValue
+          )} total pipeline`,
+
+      descriptionColor:
+        "text-[#718599]",
+    },
+
+    {
+      title: "WON DEALS",
+
+      value: displayNumber(
+        stats.wonDeals.value
+      ),
+
+      description: loading
+        ? "Loading..."
+        : `${formatCurrency(
+            stats.wonDeals.wonValue
+          )} closed`,
+
+      descriptionColor:
+        "text-[#20A65A]",
+    },
+
+    {
+      title: "DEALS IN PROGRESS",
+
+      value: displayNumber(
+        stats.dealsInProgress.value
+      ),
+
+      description: loading
+        ? "Loading..."
+        : `${formatCurrency(
+            stats.dealsInProgress
+              .pipelineValue
+          )} pipeline`,
+
+      descriptionColor:
+        "text-[#718599]",
+    },
+
+    {
+      title: "CLOSING THIS MONTH",
+
+      value: displayNumber(
+        stats.closingThisMonth.value
+      ),
+
+      description: loading
+        ? "Loading..."
+        : `${formatCurrency(
+            stats.closingThisMonth
+              .potentialValue
+          )} potential`,
+
+      descriptionColor:
+        "text-[#E87500]",
+    },
+  ];
+
+  // =====================================================
+  // UI
+  // =====================================================
+
   return (
     <div
       className="
@@ -37,7 +279,7 @@ const DealStats = () => {
         lg:grid-cols-4
       "
     >
-      {stats.map((stat) => (
+      {statCards.map((stat) => (
         <div
           key={stat.title}
           className="
@@ -51,7 +293,10 @@ const DealStats = () => {
             shadow-[0_1px_2px_rgba(15,23,42,0.03)]
           "
         >
-          {/* Title */}
+          {/* =================================================
+              TITLE
+          ================================================== */}
+
           <p
             className="
               text-[7px]
@@ -64,7 +309,10 @@ const DealStats = () => {
             {stat.title}
           </p>
 
-          {/* Value */}
+          {/* =================================================
+              VALUE
+          ================================================== */}
+
           <p
             className="
               mt-1
@@ -78,7 +326,10 @@ const DealStats = () => {
             {stat.value}
           </p>
 
-          {/* Description */}
+          {/* =================================================
+              DESCRIPTION
+          ================================================== */}
+
           <p
             className={`
               mt-1.5
@@ -91,6 +342,23 @@ const DealStats = () => {
           </p>
         </div>
       ))}
+
+      {/* =====================================================
+          ERROR
+      ===================================================== */}
+
+      {error && (
+        <div
+          className="
+            col-span-full
+            text-[7px]
+            font-medium
+            text-[#DC2626]
+          "
+        >
+          Unable to load deal statistics.
+        </div>
+      )}
     </div>
   );
 };

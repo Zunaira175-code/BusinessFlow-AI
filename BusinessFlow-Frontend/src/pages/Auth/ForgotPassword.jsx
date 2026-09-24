@@ -2,19 +2,106 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
+const API_URL = "http://localhost:5000/api";
+
 const ForgotPassword = () => {
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
 
-  const handleSubmit = (e) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    navigate("/check-email", {
-      state: {
-        email,
-      },
-    });
+    setError("");
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // =====================================================
+    // FRONTEND VALIDATION
+    // =====================================================
+
+    if (!normalizedEmail) {
+      setError("Please enter your email address.");
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(normalizedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    // =====================================================
+    // API REQUEST
+    // =====================================================
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/auth/forgot-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: normalizedEmail,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      // =====================================================
+      // BACKEND ERROR
+      // =====================================================
+
+      if (!response.ok || !result.success) {
+        setError(
+          result.message ||
+            "Unable to process your password reset request."
+        );
+
+        setLoading(false);
+        return;
+      }
+
+      // =====================================================
+      // RESET URL
+      // =====================================================
+
+      const resetUrl = result.data?.resetUrl || "";
+
+      /*
+       * Development mode:
+       * Backend currently returns resetUrl so we can test
+       * the complete reset-password flow without email service.
+       */
+
+      // =====================================================
+      // GO TO CHECK EMAIL
+      // =====================================================
+
+      navigate("/check-email", {
+        state: {
+          email: normalizedEmail,
+          resetUrl,
+        },
+      });
+    } catch (error) {
+      console.error("Forgot Password Error:", error);
+
+      setError(
+        "Unable to connect to the server. Please make sure the backend is running."
+      );
+
+      setLoading(false);
+    }
   };
 
   return (
@@ -111,7 +198,6 @@ const ForgotPassword = () => {
 
           </div>
 
-
           {/* =================================================
               FORGOT PASSWORD CARD
           ================================================= */}
@@ -161,7 +247,6 @@ const ForgotPassword = () => {
 
             </div>
 
-
             {/* =================================================
                 FORM
             ================================================= */}
@@ -170,6 +255,29 @@ const ForgotPassword = () => {
               onSubmit={handleSubmit}
               className="mt-5"
             >
+
+              {/* =================================================
+                  ERROR MESSAGE
+              ================================================= */}
+
+              {error && (
+                <div
+                  className="
+                    mb-3.5
+                    rounded-[4px]
+                    border
+                    border-[#F5C2C7]
+                    bg-[#FFF1F2]
+                    px-3
+                    py-2
+                    text-[7px]
+                    leading-[11px]
+                    text-[#B42318]
+                  "
+                >
+                  {error}
+                </div>
+              )}
 
               {/* Email Label */}
               <label
@@ -185,7 +293,6 @@ const ForgotPassword = () => {
                 Email Address
               </label>
 
-
               {/* Email Input */}
               <input
                 id="email"
@@ -193,8 +300,16 @@ const ForgotPassword = () => {
                 type="email"
                 placeholder="you@company.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+
+                  if (error) {
+                    setError("");
+                  }
+                }}
+                disabled={loading}
                 required
+                autoComplete="email"
                 className="
                   h-[32px]
                   w-full
@@ -210,9 +325,10 @@ const ForgotPassword = () => {
                   focus:border-[#7AAFE4]
                   focus:ring-1
                   focus:ring-[#D9EAFB]
+                  disabled:cursor-not-allowed
+                  disabled:bg-[#F5F8FB]
                 "
               />
-
 
               {/* =================================================
                   SEND RESET BUTTON
@@ -220,6 +336,7 @@ const ForgotPassword = () => {
 
               <button
                 type="submit"
+                disabled={loading}
                 className="
                   mt-3.5
                   flex
@@ -237,18 +354,39 @@ const ForgotPassword = () => {
                   duration-200
                   hover:bg-[#0A3156]
                   active:scale-[0.99]
+                  disabled:cursor-not-allowed
+                  disabled:opacity-70
                 "
               >
-                Send Reset Link
+                {loading ? (
+                  <>
+                    <span
+                      className="
+                        h-[10px]
+                        w-[10px]
+                        animate-spin
+                        rounded-full
+                        border-2
+                        border-white
+                        border-t-transparent
+                      "
+                    />
 
-                <ArrowRight
-                  size={11}
-                  strokeWidth={2}
-                />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    Send Reset Link
+
+                    <ArrowRight
+                      size={11}
+                      strokeWidth={2}
+                    />
+                  </>
+                )}
               </button>
 
             </form>
-
 
             {/* =================================================
                 BACK TO LOGIN
@@ -281,7 +419,6 @@ const ForgotPassword = () => {
             </div>
 
           </div>
-
 
           {/* =================================================
               SIGN IN

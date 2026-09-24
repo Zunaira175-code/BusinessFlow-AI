@@ -6,32 +6,48 @@ import LeadActivity from "../../components/EmployeeLead/LeadActivity";
 import UpcomingLeadFollowUps from "../../components/EmployeeLead/UpcomingLeadFollowUps";
 
 const EmployeeLeads = () => {
-  return (
-    <div className="w-full">
+  const handleAddLead = () => {
+    console.log("Add Lead clicked");
+  };
 
-      {/* Header */}
+  return (
+    <div className="w-full min-w-0">
+      {/* =====================================================
+          PAGE HEADER
+      ====================================================== */}
+
       <EmployeeLeadHeader
-        onAddLead={() => {
-          console.log("Add Lead clicked");
-        }}
+        onAddLead={handleAddLead}
       />
 
-      {/* Stats */}
-      <div className="mt-4">
+      {/* =====================================================
+          LEAD STATS
+      ====================================================== */}
+
+      <div className="mt-4 w-full">
         <LeadStats />
       </div>
 
-      {/* Pipeline */}
-      <div className="mt-4">
+      {/* =====================================================
+          LEAD PIPELINE
+      ====================================================== */}
+
+      <div className="mt-4 w-full">
         <LeadPipeline />
       </div>
 
-      {/* Leads */}
-      <div className="mt-4">
+      {/* =====================================================
+          MY LEADS
+      ====================================================== */}
+
+      <div className="mt-4 w-full">
         <MyLeads />
       </div>
 
-      {/* Activity + Upcoming Follow-ups */}
+      {/* =====================================================
+          ACTIVITY + FOLLOW UPS
+      ====================================================== */}
+
       <div
         className="
           mt-4
@@ -42,10 +58,18 @@ const EmployeeLeads = () => {
           lg:grid-cols-[1.2fr_1fr]
         "
       >
-        <LeadActivity />
-        <UpcomingLeadFollowUps />
-      </div>
+        {/* Lead Activity */}
 
+        <div className="min-w-0">
+          <LeadActivity />
+        </div>
+
+        {/* Upcoming Follow Ups */}
+
+        <div className="min-w-0">
+          <UpcomingLeadFollowUps />
+        </div>
+      </div>
     </div>
   );
 };

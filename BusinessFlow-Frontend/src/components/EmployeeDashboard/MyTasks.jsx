@@ -1,42 +1,173 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CalendarDays } from "lucide-react";
 
-const tasks = [
-  {
-    id: 1,
-    title: "Finalize TechNova Proposal",
-    date: "Today, 5:00 PM",
-    priority: "High",
-    priorityClass:
-      "bg-[#FFF0F0] text-[#EF4444]",
-  },
-  {
-    id: 2,
-    title: "Follow up with Acme Corp",
-    date: "Tomorrow",
-    priority: "Medium",
-    priorityClass:
-      "bg-[#FFF6E8] text-[#F59E0B]",
-  },
-  {
-    id: 3,
-    title: "Review Bright Systems requirements",
-    date: "Sep 03",
-    priority: "Low",
-    priorityClass:
-      "bg-[#EAF7FC] text-[#079BEA]",
-  },
-];
+const API_URL = "http://localhost:5000/api";
+
+const formatTaskDate = (dateValue) => {
+  if (!dateValue) return "No due date";
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "No due date";
+  }
+
+  const now = new Date();
+
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const taskDay = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+
+  const time = date.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  if (taskDay.getTime() === today.getTime()) {
+    return `Today, ${time}`;
+  }
+
+  if (taskDay.getTime() === tomorrow.getTime()) {
+    return `Tomorrow, ${time}`;
+  }
+
+  return date.toLocaleDateString([], {
+    month: "short",
+    day: "2-digit",
+  });
+};
+
+const getPriorityData = (priority) => {
+  switch (priority) {
+    case "HIGH":
+      return {
+        label: "High",
+        className: "bg-[#FFF0F0] text-[#EF4444]",
+      };
+
+    case "LOW":
+      return {
+        label: "Low",
+        className: "bg-[#EAF7FC] text-[#079BEA]",
+      };
+
+    case "MEDIUM":
+    default:
+      return {
+        label: "Medium",
+        className: "bg-[#FFF6E8] text-[#F59E0B]",
+      };
+  }
+};
 
 const MyTasks = () => {
-  const [completedTasks, setCompletedTasks] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [completingTaskId, setCompletingTaskId] = useState(null);
+  const [error, setError] = useState("");
 
-  const toggleTask = (id) => {
-    setCompletedTasks((prev) =>
-      prev.includes(id)
-        ? prev.filter((taskId) => taskId !== id)
-        : [...prev, id]
-    );
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const token = localStorage.getItem("businessflow_token");
+
+      if (!token) {
+        setError("Authentication required.");
+        return;
+      }
+
+      const response = await fetch(
+        `${API_URL}/tasks?view=all&page=1&limit=3`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message || "Failed to load your tasks."
+        );
+      }
+
+      setTasks(result.data || []);
+    } catch (err) {
+      console.error("My Tasks Error:", err);
+      setError(err.message || "Failed to load tasks.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const toggleTask = async (task) => {
+    if (task.status === "Completed") {
+      return;
+    }
+
+    try {
+      setCompletingTaskId(task._id);
+
+      const token = localStorage.getItem("businessflow_token");
+
+      if (!token) {
+        setError("Authentication required.");
+        return;
+      }
+
+      const response = await fetch(
+        `${API_URL}/tasks/${task._id}/complete`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message || "Failed to complete task."
+        );
+      }
+
+      const updatedTask = result.data;
+
+      setTasks((prevTasks) =>
+        prevTasks.map((item) =>
+          item._id === task._id ? updatedTask : item
+        )
+      );
+    } catch (err) {
+      console.error("Complete Task Error:", err);
+      setError(err.message || "Failed to complete task.");
+    } finally {
+      setCompletingTaskId(null);
+    }
   };
 
   return (
@@ -93,6 +224,7 @@ const MyTasks = () => {
         {/* View All */}
         <button
           type="button"
+          onClick={fetchTasks}
           className="
             text-[8px]
             font-semibold
@@ -109,118 +241,179 @@ const MyTasks = () => {
           TASK LIST
       ====================================================== */}
       <div>
-        {tasks.map((task, index) => {
-          const completed = completedTasks.includes(task.id);
+        {/* Loading */}
+        {loading && (
+          <div className="flex min-h-[171px] items-center justify-center">
+            <p className="text-[9px] text-[#8495A5]">
+              Loading tasks...
+            </p>
+          </div>
+        )}
 
-          return (
-            <div
-              key={task.id}
-              className={`
-                flex
-                min-h-[57px]
-                items-center
-                gap-2.5
-                px-3
-                py-2.5
-                ${
-                  index !== tasks.length - 1
-                    ? "border-b border-[#E2E9EF]"
-                    : ""
-                }
-              `}
-            >
-              {/* Checkbox */}
+        {/* Error */}
+        {!loading && error && (
+          <div className="flex min-h-[171px] items-center justify-center px-4">
+            <div className="text-center">
+              <p className="text-[9px] text-[#EF4444]">
+                {error}
+              </p>
+
               <button
                 type="button"
-                onClick={() => toggleTask(task.id)}
-                aria-label={`Mark ${task.title} as ${
-                  completed ? "incomplete" : "complete"
-                }`}
+                onClick={fetchTasks}
                 className="
-                  flex
-                  h-[13px]
-                  w-[13px]
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-[3px]
-                  border
-                  border-[#9AAAB8]
-                  bg-white
-                  transition-colors
-                  hover:border-[#315D80]
+                  mt-2
+                  text-[8px]
+                  font-semibold
+                  text-[#079BEA]
+                  hover:text-[#0B3D6B]
                 "
               >
-                {completed && (
-                  <span
-                    className="
-                      text-[9px]
-                      font-bold
-                      leading-none
-                      text-[#0B3D6B]
-                    "
-                  >
-                    ✓
-                  </span>
-                )}
+                Try Again
               </button>
+            </div>
+          </div>
+        )}
 
-              {/* Task Information */}
-              <div className="min-w-0 flex-1">
-                <p
+        {/* Empty */}
+        {!loading && !error && tasks.length === 0 && (
+          <div className="flex min-h-[171px] items-center justify-center">
+            <p className="text-[9px] text-[#8495A5]">
+              No tasks assigned to you.
+            </p>
+          </div>
+        )}
+
+        {/* Tasks */}
+        {!loading &&
+          !error &&
+          tasks.length > 0 &&
+          tasks.map((task, index) => {
+            const completed = task.status === "Completed";
+            const priority = getPriorityData(task.priority);
+            const isCompleting = completingTaskId === task._id;
+
+            return (
+              <div
+                key={task._id}
+                className={`
+                  flex
+                  min-h-[57px]
+                  items-center
+                  gap-2.5
+                  px-3
+                  py-2.5
+                  ${
+                    index !== tasks.length - 1
+                      ? "border-b border-[#E2E9EF]"
+                      : ""
+                  }
+                `}
+              >
+                {/* Checkbox */}
+                <button
+                  type="button"
+                  onClick={() => toggleTask(task)}
+                  disabled={completed || isCompleting}
+                  aria-label={`Mark ${task.title} as ${
+                    completed ? "incomplete" : "complete"
+                  }`}
                   className={`
-                    truncate
-                    text-[10px]
-                    font-semibold
-                    leading-[13px]
+                    flex
+                    h-[13px]
+                    w-[13px]
+                    shrink-0
+                    items-center
+                    justify-center
+                    rounded-[3px]
+                    border
+                    border-[#9AAAB8]
+                    bg-white
+                    transition-colors
                     ${
                       completed
-                        ? "text-[#8A9AAA] line-through"
-                        : "text-[#17324D]"
+                        ? "border-[#0B3D6B] bg-[#0B3D6B]"
+                        : "hover:border-[#315D80]"
+                    }
+                    ${
+                      isCompleting
+                        ? "cursor-wait opacity-50"
+                        : ""
                     }
                   `}
                 >
-                  {task.title}
-                </p>
+                  {completed && (
+                    <span
+                      className="
+                        text-[9px]
+                        font-bold
+                        leading-none
+                        text-white
+                      "
+                    >
+                      ✓
+                    </span>
+                  )}
+                </button>
 
-                <div
-                  className="
-                    mt-1
-                    flex
-                    items-center
-                    gap-1
-                    text-[7px]
-                    leading-[10px]
-                    text-[#8A9AAA]
-                  "
-                >
-                  <CalendarDays
-                    size={8}
-                    strokeWidth={1.7}
-                  />
+                {/* Task Information */}
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`
+                      truncate
+                      text-[10px]
+                      font-semibold
+                      leading-[13px]
+                      ${
+                        completed
+                          ? "text-[#8A9AAA] line-through"
+                          : "text-[#17324D]"
+                      }
+                    `}
+                  >
+                    {task.title}
+                  </p>
 
-                  <span>{task.date}</span>
+                  <div
+                    className="
+                      mt-1
+                      flex
+                      items-center
+                      gap-1
+                      text-[7px]
+                      leading-[10px]
+                      text-[#8A9AAA]
+                    "
+                  >
+                    <CalendarDays
+                      size={8}
+                      strokeWidth={1.7}
+                    />
+
+                    <span>
+                      {formatTaskDate(task.dueAt)}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              {/* Priority */}
-              <span
-                className={`
-                  shrink-0
-                  rounded-[4px]
-                  px-[6px]
-                  py-[3px]
-                  text-[7px]
-                  font-semibold
-                  leading-[9px]
-                  ${task.priorityClass}
-                `}
-              >
-                {task.priority}
-              </span>
-            </div>
-          );
-        })}
+                {/* Priority */}
+                <span
+                  className={`
+                    shrink-0
+                    rounded-[4px]
+                    px-[6px]
+                    py-[3px]
+                    text-[7px]
+                    font-semibold
+                    leading-[9px]
+                    ${priority.className}
+                  `}
+                >
+                  {priority.label}
+                </span>
+              </div>
+            );
+          })}
       </div>
     </div>
   );

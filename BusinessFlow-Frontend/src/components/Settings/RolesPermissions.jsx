@@ -60,28 +60,7 @@ const RolesPermissions = () => {
             Roles & Permissions
           </h2>
 
-          <button
-            type="button"
-            onClick={handleManageRoles}
-            className="
-              flex
-              shrink-0
-              items-center
-              gap-1
-              text-[8px]
-              font-semibold
-              text-[#079BEA]
-              transition-colors
-              hover:text-[#0B3D6B]
-            "
-          >
-            Manage Roles
-
-            <ArrowRight
-              size={11}
-              strokeWidth={2}
-            />
-          </button>
+          
 
         </div>
 

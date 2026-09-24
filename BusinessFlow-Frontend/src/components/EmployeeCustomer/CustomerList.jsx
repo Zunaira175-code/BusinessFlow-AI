@@ -1,77 +1,374 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MoreHorizontal,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 
-const customers = [
-  {
-    name: "John Carter",
-    initials: "JC",
-    company: "Acme Corporation",
-    status: "Active",
-    lastContact: "Today",
-    nextFollowUp: "Tomorrow",
-    value: "$24,500",
-  },
-  {
-    name: "Emily Stone",
-    initials: "ES",
-    company: "TechNova",
-    status: "Active",
-    lastContact: "Yesterday",
-    nextFollowUp: "Sep 02, 2026",
-    value: "$18,200",
-  },
-  {
-    name: "David Miller",
-    initials: "DM",
-    company: "Bright Systems",
-    status: "At Risk",
-    lastContact: "Aug 28, 2026",
-    nextFollowUp: "Today ⚠",
-    value: "$12,800",
-  },
-  {
-    name: "Sophia Williams",
-    initials: "",
-    avatar: "https://i.pravatar.cc/100?img=47",
-    company: "NovaTech",
-    status: "Active",
-    lastContact: "Aug 27, 2026",
-    nextFollowUp: "Sep 04, 2026",
-    value: "$31,400",
-  },
-  {
-    name: "James Anderson",
-    initials: "JA",
-    company: "Vertex Solutions",
-    status: "Inactive",
-    lastContact: "Aug 20, 2026",
-    nextFollowUp: "—",
-    value: "$7,600",
-  },
-];
+const API_URL = "http://localhost:5000/api";
 
-const CustomerList = () => {
-  const [selectedCustomers, setSelectedCustomers] = useState([]);
+const formatCurrency = (value) => {
+  const amount = Number(value) || 0;
 
-  const toggleCustomer = (name) => {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+const formatDate = (dateValue) => {
+  if (!dateValue) {
+    return "—";
+  }
+
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  const now = new Date();
+
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  const customerDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+
+  if (
+    customerDate.getTime() ===
+    today.getTime()
+  ) {
+    return "Today";
+  }
+
+  if (
+    customerDate.getTime() ===
+    yesterday.getTime()
+  ) {
+    return "Yesterday";
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+};
+
+const formatFollowUp = (followUp) => {
+  if (!followUp?.dueAt) {
+    return "—";
+  }
+
+  const date = new Date(followUp.dueAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  const now = new Date();
+
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate()
+  );
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const followUpDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
+
+  if (
+    followUpDate.getTime() ===
+    today.getTime()
+  ) {
+    return "Today ⚠";
+  }
+
+  if (
+    followUpDate.getTime() ===
+    tomorrow.getTime()
+  ) {
+    return "Tomorrow";
+  }
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  });
+};
+
+const CustomerList = ({
+  search = "",
+  status = "",
+  sort = "recent",
+  onCustomerClick,
+}) => {
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomers, setSelectedCustomers] =
+    useState([]);
+
+  const [page, setPage] = useState(1);
+
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 5,
+    total: 0,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // =====================================================
+  // FETCH CUSTOMERS
+  // =====================================================
+
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const token = localStorage.getItem(
+        "businessflow_token"
+      );
+
+      if (!token) {
+        setError("Authentication required.");
+        return;
+      }
+
+      const params = new URLSearchParams();
+
+      params.set("page", page);
+      params.set("limit", 5);
+
+      if (search.trim()) {
+        params.set(
+          "search",
+          search.trim()
+        );
+      }
+
+      if (status) {
+        params.set("status", status);
+      }
+
+      if (sort) {
+        params.set("sort", sort);
+      }
+
+      const response = await fetch(
+        `${API_URL}/customers/me?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message ||
+            "Failed to fetch customers."
+        );
+      }
+
+      setCustomers(result.data || []);
+
+      setPagination(
+        result.pagination || {
+          page,
+          limit: 5,
+          total: 0,
+          totalPages: 0,
+          hasNextPage: false,
+          hasPreviousPage: false,
+        }
+      );
+
+      // Remove selections that are no longer on page
+      setSelectedCustomers([]);
+    } catch (err) {
+      console.error(
+        "Customer List Error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Failed to fetch customers."
+      );
+
+      setCustomers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // =====================================================
+  // FETCH WHEN PAGE / FILTERS CHANGE
+  // =====================================================
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [page, search, status, sort]);
+
+  // =====================================================
+  // RESET PAGE WHEN SEARCH / FILTER CHANGES
+  // =====================================================
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, status, sort]);
+
+  // =====================================================
+  // SELECT CUSTOMER
+  // =====================================================
+
+  const toggleCustomer = (id) => {
     setSelectedCustomers((prev) =>
-      prev.includes(name)
-        ? prev.filter((item) => item !== name)
-        : [...prev, name]
+      prev.includes(id)
+        ? prev.filter(
+            (item) => item !== id
+          )
+        : [...prev, id]
     );
   };
 
+  // =====================================================
+  // SELECT ALL
+  // =====================================================
+
   const toggleAll = () => {
-    if (selectedCustomers.length === customers.length) {
+    if (
+      customers.length > 0 &&
+      selectedCustomers.length ===
+        customers.length
+    ) {
       setSelectedCustomers([]);
     } else {
-      setSelectedCustomers(customers.map((customer) => customer.name));
+      setSelectedCustomers(
+        customers.map(
+          (customer) =>
+            customer.id ||
+            customer._id
+        )
+      );
     }
   };
+
+  // =====================================================
+  // PAGINATION
+  // =====================================================
+
+  const goToPreviousPage = () => {
+    if (pagination.hasPreviousPage) {
+      setPage((prev) =>
+        Math.max(prev - 1, 1)
+      );
+    }
+  };
+
+  const goToNextPage = () => {
+    if (pagination.hasNextPage) {
+      setPage((prev) => prev + 1);
+    }
+  };
+
+  const goToPage = (pageNumber) => {
+    if (
+      pageNumber >= 1 &&
+      pageNumber <=
+        pagination.totalPages
+    ) {
+      setPage(pageNumber);
+    }
+  };
+
+  // =====================================================
+  // PAGE NUMBERS
+  // =====================================================
+
+  const getPageNumbers = () => {
+    const totalPages =
+      pagination.totalPages;
+
+    if (!totalPages) {
+      return [];
+    }
+
+    if (totalPages <= 3) {
+      return Array.from(
+        { length: totalPages },
+        (_, index) => index + 1
+      );
+    }
+
+    if (page <= 2) {
+      return [1, 2, 3];
+    }
+
+    if (page >= totalPages - 1) {
+      return [
+        totalPages - 2,
+        totalPages - 1,
+        totalPages,
+      ];
+    }
+
+    return [
+      page - 1,
+      page,
+      page + 1,
+    ];
+  };
+
+  const pageNumbers =
+    getPageNumbers();
+
+  // =====================================================
+  // SHOWING TEXT
+  // =====================================================
+
+  const showingFrom =
+    pagination.total === 0
+      ? 0
+      : (pagination.page - 1) *
+          pagination.limit +
+        1;
+
+  const showingTo =
+    pagination.total === 0
+      ? 0
+      : Math.min(
+          pagination.page *
+            pagination.limit,
+          pagination.total
+        );
 
   return (
     <div
@@ -112,6 +409,7 @@ const CustomerList = () => {
 
         <button
           type="button"
+          onClick={() => setPage(1)}
           className="
             text-[8px]
             font-semibold
@@ -131,15 +429,28 @@ const CustomerList = () => {
       <div className="w-full overflow-x-auto">
         <table className="w-full min-w-[720px] border-collapse">
           <thead>
-            <tr className="h-[32px] border-b border-[#DCE5ED] bg-[#F8FAFC]">
+            <tr
+              className="
+                h-[32px]
+                border-b
+                border-[#DCE5ED]
+                bg-[#F8FAFC]
+              "
+            >
               {/* Checkbox */}
+
               <th className="w-[38px] px-3 text-left">
                 <input
                   type="checkbox"
                   checked={
-                    selectedCustomers.length === customers.length
+                    customers.length > 0 &&
+                    selectedCustomers.length ===
+                      customers.length
                   }
                   onChange={toggleAll}
+                  disabled={
+                    customers.length === 0
+                  }
                   className="
                     h-[11px]
                     w-[11px]
@@ -151,12 +462,29 @@ const CustomerList = () => {
                 />
               </th>
 
-              <TableHeader>Customer</TableHeader>
-              <TableHeader>Company</TableHeader>
-              <TableHeader>Status</TableHeader>
-              <TableHeader>Last Contact</TableHeader>
-              <TableHeader>Next Follow-up</TableHeader>
-              <TableHeader>Value</TableHeader>
+              <TableHeader>
+                Customer
+              </TableHeader>
+
+              <TableHeader>
+                Company
+              </TableHeader>
+
+              <TableHeader>
+                Status
+              </TableHeader>
+
+              <TableHeader>
+                Last Contact
+              </TableHeader>
+
+              <TableHeader>
+                Next Follow-up
+              </TableHeader>
+
+              <TableHeader>
+                Value
+              </TableHeader>
 
               <th
                 className="
@@ -173,191 +501,311 @@ const CustomerList = () => {
           </thead>
 
           <tbody>
-            {customers.map((customer) => {
-              const selected = selectedCustomers.includes(
-                customer.name
-              );
+            {/* =================================================
+                LOADING
+            ================================================== */}
 
-              return (
-                <tr
-                  key={customer.name}
-                  className={`
-                    h-[42px]
-                    border-b
-                    border-[#E2E9EF]
-                    transition-colors
-                    ${
-                      customer.status === "At Risk"
-                        ? "bg-[#FFF8F8]"
-                        : "bg-white hover:bg-[#FAFCFE]"
-                    }
-                  `}
+            {loading && (
+              <tr>
+                <td
+                  colSpan="8"
+                  className="h-[210px] text-center"
                 >
-                  {/* Checkbox */}
-                  <td className="px-3">
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      onChange={() =>
-                        toggleCustomer(customer.name)
-                      }
+                  <span className="text-[9px] text-[#8495A5]">
+                    Loading customers...
+                  </span>
+                </td>
+              </tr>
+            )}
+
+            {/* =================================================
+                ERROR
+            ================================================== */}
+
+            {!loading && error && (
+              <tr>
+                <td
+                  colSpan="8"
+                  className="h-[210px] text-center"
+                >
+                  <div className="flex flex-col items-center justify-center">
+                    <p className="text-[9px] text-[#EF4444]">
+                      {error}
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={fetchCustomers}
                       className="
-                        h-[11px]
-                        w-[11px]
-                        cursor-pointer
-                        rounded-[2px]
-                        border-[#D4DEE7]
-                        accent-[#0B3D6B]
+                        mt-2
+                        text-[8px]
+                        font-semibold
+                        text-[#079BEA]
+                        hover:text-[#0B3D6B]
                       "
-                    />
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )}
+
+            {/* =================================================
+                EMPTY
+            ================================================== */}
+
+            {!loading &&
+              !error &&
+              customers.length === 0 && (
+                <tr>
+                  <td
+                    colSpan="8"
+                    className="h-[210px] text-center"
+                  >
+                    <p className="text-[9px] text-[#8495A5]">
+                      No customers found.
+                    </p>
                   </td>
+                </tr>
+              )}
 
-                  {/* Customer */}
-                  <td className="px-2">
-                    <div className="flex items-center gap-2">
-                      {customer.avatar ? (
-                        <div
+            {/* =================================================
+                CUSTOMER ROWS
+            ================================================== */}
+
+            {!loading &&
+              !error &&
+              customers.map(
+                (customer) => {
+                  const customerId =
+                    customer.id ||
+                    customer._id;
+
+                  const selected =
+                    selectedCustomers.includes(
+                      customerId
+                    );
+
+                  const isAtRisk =
+                    customer.status ===
+                      "At Risk" ||
+                    customer.healthStatus ===
+                      "At Risk";
+
+                  const initials =
+                    customer.initials ||
+                    `${customer.firstName?.[0] || ""}${
+                      customer.lastName?.[0] || ""
+                    }`.toUpperCase();
+
+                  return (
+                    <tr
+                      key={customerId}
+                      onClick={() =>
+                        onCustomerClick?.(
+                          customer
+                        )
+                      }
+                      className={`
+                        h-[42px]
+                        border-b
+                        border-[#E2E9EF]
+                        transition-colors
+                        ${
+                          isAtRisk
+                            ? "bg-[#FFF8F8]"
+                            : "bg-white hover:bg-[#FAFCFE]"
+                        }
+                        ${
+                          onCustomerClick
+                            ? "cursor-pointer"
+                            : ""
+                        }
+                      `}
+                    >
+                      {/* Checkbox */}
+
+                      <td
+                        className="px-3"
+                        onClick={(event) =>
+                          event.stopPropagation()
+                        }
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() =>
+                            toggleCustomer(
+                              customerId
+                            )
+                          }
                           className="
-                            h-[24px]
-                            w-[24px]
-                            shrink-0
-                            overflow-hidden
-                            rounded-full
-                            border
-                            border-[#DCE5ED]
+                            h-[11px]
+                            w-[11px]
+                            cursor-pointer
+                            rounded-[2px]
+                            border-[#D4DEE7]
+                            accent-[#0B3D6B]
                           "
-                        >
-                          <img
-                            src={customer.avatar}
-                            alt={customer.name}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div
-                          className={`
-                            flex
-                            h-[24px]
-                            w-[24px]
-                            shrink-0
-                            items-center
-                            justify-center
-                            rounded-full
-                            text-[7px]
-                            font-semibold
-                            ${
-                              customer.status === "At Risk"
-                                ? "bg-[#FFE1C7] text-[#D97706]"
-                                : customer.status === "Inactive"
-                                  ? "bg-[#E7E9ED] text-[#737B86]"
-                                  : "bg-[#BBD6FF] text-[#315D80]"
-                            }
-                          `}
-                        >
-                          {customer.initials}
-                        </div>
-                      )}
+                        />
+                      </td>
 
-                      <span
+                      {/* Customer */}
+
+                      <td className="px-2">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={`
+                              flex
+                              h-[24px]
+                              w-[24px]
+                              shrink-0
+                              items-center
+                              justify-center
+                              rounded-full
+                              text-[7px]
+                              font-semibold
+                              ${
+                                isAtRisk
+                                  ? "bg-[#FFE1C7] text-[#D97706]"
+                                  : customer.status ===
+                                      "Inactive"
+                                    ? "bg-[#E7E9ED] text-[#737B86]"
+                                    : "bg-[#BBD6FF] text-[#315D80]"
+                              }
+                            `}
+                          >
+                            {initials}
+                          </div>
+
+                          <span
+                            className="
+                              whitespace-nowrap
+                              text-[9px]
+                              font-semibold
+                              text-[#17324D]
+                            "
+                          >
+                            {customer.name}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Company */}
+
+                      <td
                         className="
                           whitespace-nowrap
+                          px-2
+                          text-[8px]
+                          text-[#60758A]
+                        "
+                      >
+                        {customer.companyName ||
+                          "—"}
+                      </td>
+
+                      {/* Status */}
+
+                      <td className="px-2">
+                        <StatusBadge
+                          status={
+                            customer.status
+                          }
+                        />
+                      </td>
+
+                      {/* Last Contact */}
+
+                      <td
+                        className="
+                          whitespace-nowrap
+                          px-2
+                          text-[8px]
+                          text-[#60758A]
+                        "
+                      >
+                        {formatDate(
+                          customer.lastContact ||
+                            customer.lastActivityAt
+                        )}
+                      </td>
+
+                      {/* Next Follow-up */}
+
+                      <td
+                        className={`
+                          whitespace-nowrap
+                          px-2
+                          text-[8px]
+                          ${
+                            isAtRisk &&
+                            customer.nextFollowUp
+                              ? "font-semibold text-[#EF4444]"
+                              : customer.nextFollowUp
+                                  ? "font-semibold text-[#17324D]"
+                                  : "text-[#60758A]"
+                          }
+                        `}
+                      >
+                        {formatFollowUp(
+                          customer.nextFollowUp
+                        )}
+                      </td>
+
+                      {/* Value */}
+
+                      <td
+                        className="
+                          whitespace-nowrap
+                          px-2
                           text-[9px]
                           font-semibold
                           text-[#17324D]
                         "
                       >
-                        {customer.name}
-                      </span>
-                    </div>
-                  </td>
+                        {formatCurrency(
+                          customer.accountValue
+                        )}
+                      </td>
 
-                  {/* Company */}
-                  <td
-                    className="
-                      whitespace-nowrap
-                      px-2
-                      text-[8px]
-                      text-[#60758A]
-                    "
-                  >
-                    {customer.company}
-                  </td>
+                      {/* Actions */}
 
-                  {/* Status */}
-                  <td className="px-2">
-                    <StatusBadge status={customer.status} />
-                  </td>
-
-                  {/* Last Contact */}
-                  <td
-                    className="
-                      whitespace-nowrap
-                      px-2
-                      text-[8px]
-                      text-[#60758A]
-                    "
-                  >
-                    {customer.lastContact}
-                  </td>
-
-                  {/* Next Follow-up */}
-                  <td
-                    className={`
-                      whitespace-nowrap
-                      px-2
-                      text-[8px]
-                      ${
-                        customer.status === "At Risk"
-                          ? "font-semibold text-[#EF4444]"
-                          : customer.nextFollowUp === "Tomorrow"
-                            ? "font-semibold text-[#17324D]"
-                            : "text-[#60758A]"
-                      }
-                    `}
-                  >
-                    {customer.nextFollowUp}
-                  </td>
-
-                  {/* Value */}
-                  <td
-                    className="
-                      whitespace-nowrap
-                      px-2
-                      text-[9px]
-                      font-semibold
-                      text-[#17324D]
-                    "
-                  >
-                    {customer.value}
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-2">
-                    <button
-                      type="button"
-                      aria-label={`Actions for ${customer.name}`}
-                      className="
-                        flex
-                        h-6
-                        w-6
-                        items-center
-                        justify-center
-                        rounded-[4px]
-                        text-[#718599]
-                        transition-colors
-                        hover:bg-[#F1F5F8]
-                        hover:text-[#17324D]
-                      "
-                    >
-                      <MoreHorizontal
-                        size={13}
-                        strokeWidth={1.8}
-                      />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+                      <td
+                        className="px-2"
+                        onClick={(event) =>
+                          event.stopPropagation()
+                        }
+                      >
+                        <button
+                          type="button"
+                          aria-label={`Actions for ${
+                            customer.name
+                          }`}
+                          className="
+                            flex
+                            h-6
+                            w-6
+                            items-center
+                            justify-center
+                            rounded-[4px]
+                            text-[#718599]
+                            transition-colors
+                            hover:bg-[#F1F5F8]
+                            hover:text-[#17324D]
+                          "
+                        >
+                          <MoreHorizontal
+                            size={13}
+                            strokeWidth={1.8}
+                          />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                }
+              )}
           </tbody>
         </table>
       </div>
@@ -377,21 +825,34 @@ const CustomerList = () => {
           py-2
         "
       >
+        {/* Showing */}
+
         <p
           className="
             text-[8px]
             text-[#60758A]
           "
         >
-          Showing 1 to 5 of 126 entries
+          Showing {showingFrom} to{" "}
+          {showingTo} of{" "}
+          {pagination.total} entries
         </p>
+
+        {/* Pagination */}
 
         <div className="flex items-center gap-1">
           {/* Previous */}
+
           <button
             type="button"
-            disabled
-            className="
+            disabled={
+              !pagination.hasPreviousPage ||
+              loading
+            }
+            onClick={
+              goToPreviousPage
+            }
+            className={`
               flex
               h-[23px]
               min-w-[30px]
@@ -404,42 +865,68 @@ const CustomerList = () => {
               px-2
               text-[7px]
               font-medium
-              text-[#A7B3BE]
-            "
+              ${
+                pagination.hasPreviousPage
+                  ? "cursor-pointer text-[#60758A] hover:bg-[#F3F6F9]"
+                  : "cursor-not-allowed text-[#A7B3BE]"
+              }
+            `}
           >
             <ChevronLeft size={10} />
-            <span>Prev</span>
+
+            <span>
+              Prev
+            </span>
           </button>
 
-          {/* Page 1 */}
-          <PaginationButton active>
-            1
-          </PaginationButton>
+          {/* Page Numbers */}
 
-          {/* Page 2 */}
-          <PaginationButton>
-            2
-          </PaginationButton>
+          {pageNumbers.map(
+            (pageNumber) => (
+              <PaginationButton
+                key={pageNumber}
+                active={
+                  pageNumber === page
+                }
+                onClick={() =>
+                  goToPage(
+                    pageNumber
+                  )
+                }
+              >
+                {pageNumber}
+              </PaginationButton>
+            )
+          )}
 
-          {/* Page 3 */}
-          <PaginationButton>
-            3
-          </PaginationButton>
+          {/* Ellipsis */}
 
-          <span
-            className="
-              px-1
-              text-[8px]
-              text-[#8495A5]
-            "
-          >
-            ...
-          </span>
+          {pagination.totalPages >
+            3 &&
+            page <
+              pagination.totalPages -
+                1 && (
+              <span
+                className="
+                  px-1
+                  text-[8px]
+                  text-[#8495A5]
+                "
+              >
+                ...
+              </span>
+            )}
 
           {/* Next */}
+
           <button
             type="button"
-            className="
+            disabled={
+              !pagination.hasNextPage ||
+              loading
+            }
+            onClick={goToNextPage}
+            className={`
               flex
               h-[23px]
               min-w-[30px]
@@ -453,13 +940,20 @@ const CustomerList = () => {
               px-2
               text-[7px]
               font-medium
-              text-[#60758A]
-              transition-colors
-              hover:bg-[#F3F6F9]
-            "
+              ${
+                pagination.hasNextPage
+                  ? "cursor-pointer text-[#60758A] hover:bg-[#F3F6F9]"
+                  : "cursor-not-allowed text-[#A7B3BE]"
+              }
+            `}
           >
-            <span>Next</span>
-            <ChevronRight size={10} />
+            <span>
+              Next
+            </span>
+
+            <ChevronRight
+              size={10}
+            />
           </button>
         </div>
       </div>
@@ -471,7 +965,9 @@ const CustomerList = () => {
    TABLE HEADER
 ========================================================= */
 
-const TableHeader = ({ children }) => {
+const TableHeader = ({
+  children,
+}) => {
   return (
     <th
       className="
@@ -491,12 +987,26 @@ const TableHeader = ({ children }) => {
    STATUS BADGE
 ========================================================= */
 
-const StatusBadge = ({ status }) => {
+const StatusBadge = ({
+  status,
+}) => {
   const styles = {
-    Active: "bg-[#E8F8EF] text-[#20A65A] border-[#CBEED9]",
-    "At Risk": "bg-[#FFE9E9] text-[#EF4444] border-[#FFD0D0]",
-    Inactive: "bg-[#F1F3F5] text-[#84909C] border-[#E2E5E8]",
+    Active:
+      "bg-[#E8F8EF] text-[#20A65A] border-[#CBEED9]",
+
+    "At Risk":
+      "bg-[#FFE9E9] text-[#EF4444] border-[#FFD0D0]",
+
+    Inactive:
+      "bg-[#F1F3F5] text-[#84909C] border-[#E2E5E8]",
+
+    Pending:
+      "bg-[#FFF6E8] text-[#E88700] border-[#FFE3B8]",
   };
+
+  const statusClass =
+    styles[status] ||
+    "bg-[#F1F3F5] text-[#84909C] border-[#E2E5E8]";
 
   return (
     <span
@@ -509,10 +1019,10 @@ const StatusBadge = ({ status }) => {
         py-[2px]
         text-[7px]
         font-semibold
-        ${styles[status]}
+        ${statusClass}
       `}
     >
-      {status}
+      {status || "Unknown"}
     </span>
   );
 };
@@ -524,10 +1034,12 @@ const StatusBadge = ({ status }) => {
 const PaginationButton = ({
   children,
   active = false,
+  onClick,
 }) => {
   return (
     <button
       type="button"
+      onClick={onClick}
       className={`
         flex
         h-[23px]

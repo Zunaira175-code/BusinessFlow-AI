@@ -3,7 +3,7 @@ import SettingsTabs from "../../components/Settings/SettingsTabs";
 
 import ConnectedIntegrations from "../../components/Settings/ConnectedIntegrations";
 import AvailableIntegrations from "../../components/Settings/AvailableIntegrations";
-import ApiWebhooks from "../../components/Settings/ApiWebhooks";
+
 
 const Integrations = () => {
   return (
@@ -30,8 +30,7 @@ const Integrations = () => {
         {/* Available Integrations */}
         <AvailableIntegrations />
 
-        {/* API & Webhooks */}
-        <ApiWebhooks />
+       
 
       </div>
     </main>

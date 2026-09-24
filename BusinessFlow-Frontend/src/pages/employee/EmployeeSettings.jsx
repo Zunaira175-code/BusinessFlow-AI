@@ -1,5 +1,4 @@
 import SettingsPageHeader from "../../components/EmployeeSettings/SettingsPageHeader";
-import SettingsTabs from "../../components/EmployeeSettings/SettingsTabs";
 import PersonalInformation from "../../components/EmployeeSettings/PersonalInformation";
 import RegionalDisplay from "../../components/EmployeeSettings/RegionalDisplay";
 
@@ -16,10 +15,6 @@ const EmployeeSettings = () => {
       ========================================= */}
       <SettingsPageHeader />
 
-      {/* =========================================
-          TABS
-      ========================================= */}
-      <SettingsTabs />
 
       {/* =========================================
           PERSONAL INFORMATION

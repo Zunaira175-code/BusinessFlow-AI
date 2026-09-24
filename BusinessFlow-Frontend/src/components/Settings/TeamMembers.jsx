@@ -1,87 +1,455 @@
+import { useEffect, useMemo, useState } from "react";
 import {
-  Plus,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 
 import Card from "../common/Card";
-import Button from "../common/button";
 
-/* =========================================================
-   TEAM MEMBERS DATA
-========================================================= */
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-const members = [
-  {
-    name: "Sarah Mitchell",
-    role: "Admin",
-    email: "sarah.m@businessflow.ai",
-    status: "Active",
-    lastActive: "Just now",
-    avatar:
-      "https://i.pravatar.cc/100?img=47",
-  },
-  {
-    name: "Daniel Carter",
-    role: "Sales Manager",
-    email: "daniel.c@businessflow.ai",
-    status: "Active",
-    lastActive: "2 hours ago",
-    avatar:
-      "https://i.pravatar.cc/100?img=12",
-  },
-  {
-    name: "Emily Watson",
-    role: "Sales Representative",
-    email: "emily.w@businessflow.ai",
-    status: "Active",
-    lastActive: "Yesterday",
-    avatar:
-      "https://i.pravatar.cc/100?img=32",
-  },
-  {
-    name: "Michael Brown",
-    role: "Support",
-    email: "michael.b@businessflow.ai",
-    status: "Active",
-    lastActive: "Oct 24, 2023",
-    initials: "MB",
-  },
-  {
-    name: "Olivia Wilson",
-    role: "Marketing",
-    email: "olivia.w@businessflow.ai",
-    status: "Pending",
-    lastActive: "-",
-    initials: "OW",
-  },
-];
-
+const MEMBERS_PER_PAGE = 5;
 
 /* =========================================================
    TEAM MEMBERS
 ========================================================= */
 
 const TeamMembers = () => {
+  const [members, setMembers] = useState([]);
 
-  const handleInviteMember = () => {
-    console.log("Invite member clicked");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  /* =====================================================
+     TOKEN
+  ====================================================== */
+
+  const getToken = () => {
+    return (
+      localStorage.getItem("businessflow_token") ||
+      sessionStorage.getItem("businessflow_token")
+    );
   };
+
+  /* =====================================================
+     LOAD TEAM MEMBERS
+  ====================================================== */
+
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const token = getToken();
+
+        if (!token) {
+          setError(
+            "Authentication token not found. Please login again."
+          );
+          return;
+        }
+
+        const response = await fetch(
+          `${API_BASE_URL}/api/employees`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.message ||
+              "Failed to load team members."
+          );
+        }
+
+        /*
+         * Support the common response shapes:
+         *
+         * data.employees
+         * data.members
+         * data.users
+         * data
+         */
+
+        const responseData =
+          result?.data;
+
+        let teamMembers = [];
+
+        if (
+          Array.isArray(
+            responseData?.employees
+          )
+        ) {
+          teamMembers =
+            responseData.employees;
+        } else if (
+          Array.isArray(
+            responseData?.members
+          )
+        ) {
+          teamMembers =
+            responseData.members;
+        } else if (
+          Array.isArray(
+            responseData?.users
+          )
+        ) {
+          teamMembers =
+            responseData.users;
+        } else if (
+          Array.isArray(responseData)
+        ) {
+          teamMembers =
+            responseData;
+        }
+
+        setMembers(teamMembers);
+        setCurrentPage(1);
+      } catch (err) {
+        console.error(
+          "Fetch Team Members Error:",
+          err
+        );
+
+        setError(
+          err.message ||
+            "Unable to load team members."
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTeamMembers();
+  }, []);
+
+  /* =====================================================
+     PROFILE UPDATE EVENT
+  ====================================================== */
+
+  useEffect(() => {
+    const handleProfileUpdated = (
+      event
+    ) => {
+      const updatedData =
+        event?.detail;
+
+      if (!updatedData) {
+        return;
+      }
+
+      /*
+       * Update currently logged-in admin
+       * inside team list if that user exists.
+       */
+
+      setMembers((currentMembers) =>
+        currentMembers.map((member) => {
+          const memberId =
+            member?._id ||
+            member?.id;
+
+          const currentUserId =
+            updatedData?.id ||
+            updatedData?._id;
+
+          if (
+            currentUserId &&
+            memberId &&
+            String(memberId) ===
+              String(currentUserId)
+          ) {
+            return {
+              ...member,
+              firstName:
+                updatedData.firstName ??
+                member.firstName,
+
+              lastName:
+                updatedData.lastName ??
+                member.lastName,
+
+              email:
+                updatedData.email ??
+                member.email,
+
+              phone:
+                updatedData.phone ??
+                member.phone,
+
+              jobTitle:
+                updatedData.jobTitle ??
+                member.jobTitle,
+
+              profilePicture:
+                updatedData.profilePicture ??
+                member.profilePicture,
+            };
+          }
+
+          return member;
+        })
+      );
+    };
+
+    window.addEventListener(
+      "businessflow-profile-updated",
+      handleProfileUpdated
+    );
+
+    return () => {
+      window.removeEventListener(
+        "businessflow-profile-updated",
+        handleProfileUpdated
+      );
+    };
+  }, []);
+
+  /* =====================================================
+     TOTAL PAGES
+  ====================================================== */
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(
+      members.length /
+        MEMBERS_PER_PAGE
+    )
+  );
+
+  /* =====================================================
+     CURRENT PAGE DATA
+  ====================================================== */
+
+  const currentMembers = useMemo(() => {
+    const startIndex =
+      (currentPage - 1) *
+      MEMBERS_PER_PAGE;
+
+    return members.slice(
+      startIndex,
+      startIndex + MEMBERS_PER_PAGE
+    );
+  }, [members, currentPage]);
+
+  /* =====================================================
+     PREVIOUS
+  ====================================================== */
 
   const handlePrevious = () => {
-    console.log("Previous page");
+    setCurrentPage((page) =>
+      Math.max(1, page - 1)
+    );
   };
+
+  /* =====================================================
+     NEXT
+  ====================================================== */
 
   const handleNext = () => {
-    console.log("Next page");
+    setCurrentPage((page) =>
+      Math.min(
+        totalPages,
+        page + 1
+      )
+    );
   };
 
+  /* =====================================================
+     MEMBER NAME
+  ====================================================== */
+
+  const getMemberName = (member) => {
+    const firstName =
+      member?.firstName ||
+      "";
+
+    const lastName =
+      member?.lastName ||
+      "";
+
+    const fullName =
+      `${firstName} ${lastName}`.trim();
+
+    return fullName || "Unnamed User";
+  };
+
+  /* =====================================================
+     MEMBER ROLE
+  ====================================================== */
+
+  const getMemberRole = (member) => {
+    /*
+     * Admin gets Admin label.
+     * Employees show Job Title first,
+     * then Department as fallback.
+     */
+
+    if (
+      member?.role === "admin"
+    ) {
+      return "Admin";
+    }
+
+    return (
+      member?.jobTitle ||
+      member?.department ||
+      "Employee"
+    );
+  };
+
+  /* =====================================================
+     MEMBER STATUS
+  ====================================================== */
+
+  const getMemberStatus = (member) => {
+    /*
+     * If backend already provides status,
+     * use it.
+     */
+
+    if (member?.status) {
+      return member.status;
+    }
+
+    /*
+     * Pending invitation
+     */
+
+    if (
+      member?.invitationAcceptedAt ===
+        null &&
+      member?.role === "employee"
+    ) {
+      return "Pending";
+    }
+
+    /*
+     * Active / inactive account
+     */
+
+    if (
+      member?.isActive === false
+    ) {
+      return "Inactive";
+    }
+
+    return "Active";
+  };
+
+  /* =====================================================
+     LAST ACTIVE
+  ====================================================== */
+
+  const getLastActive = (member) => {
+    /*
+     * Use a real lastActive field if
+     * backend provides one.
+     */
+
+    if (member?.lastActive) {
+      return member.lastActive;
+    }
+
+    /*
+     * User model currently does not have
+     * a dedicated lastActive field.
+     */
+
+    return "—";
+  };
+
+  /* =====================================================
+     DATE FORMAT
+  ====================================================== */
+
+  const formatDate = (date) => {
+    if (!date) {
+      return "—";
+    }
+
+    try {
+      return new Date(
+        date
+      ).toLocaleDateString(
+        "en-US",
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }
+      );
+    } catch {
+      return "—";
+    }
+  };
+
+  /* =====================================================
+     AVATAR
+  ====================================================== */
+
+  const getAvatar = (member) => {
+    return (
+      member?.profilePicture ||
+      null
+    );
+  };
+
+  /* =====================================================
+     INITIALS
+  ====================================================== */
+
+  const getInitials = (member) => {
+    const first =
+      member?.firstName
+        ?.trim()
+        ?.charAt(0) || "";
+
+    const last =
+      member?.lastName
+        ?.trim()
+        ?.charAt(0) || "";
+
+    return (
+      `${first}${last}` ||
+      "U"
+    ).toUpperCase();
+  };
+
+  /* =====================================================
+     PAGINATION RANGE
+  ====================================================== */
+
+  const showingFrom =
+    members.length === 0
+      ? 0
+      : (currentPage - 1) *
+          MEMBERS_PER_PAGE +
+        1;
+
+  const showingTo = Math.min(
+    currentPage *
+      MEMBERS_PER_PAGE,
+    members.length
+  );
 
   return (
     <div className="w-full">
 
       {/* =================================================
-          TITLE + INVITE BUTTON
+          TITLE
       ================================================== */}
 
       <div className="mb-4 flex items-start justify-between gap-4">
@@ -107,40 +475,36 @@ const TeamMembers = () => {
               text-[#60758A]
             "
           >
-            12 members in your BusinessFlow AI workspace
+            {loading
+              ? "Loading team members..."
+              : `${members.length} members in your BusinessFlow AI workspace`}
           </p>
         </div>
 
-
-        {/* Invite Member */}
-        <Button
-          type="button"
-          onClick={handleInviteMember}
-          className="
-            flex
-            h-[32px]
-            items-center
-            gap-1.5
-            rounded-[6px]
-            bg-[#0B3D6B]
-            px-3
-            text-[9px]
-            font-semibold
-            text-white
-            shadow-none
-            hover:bg-[#092F54]
-          "
-        >
-          <Plus
-            size={13}
-            strokeWidth={2}
-          />
-
-          Invite Member
-        </Button>
-
       </div>
 
+      {/* =================================================
+          ERROR
+      ================================================== */}
+
+      {error && (
+        <div
+          className="
+            mb-3
+            rounded-[6px]
+            border
+            border-red-200
+            bg-red-50
+            px-3
+            py-2
+            text-[9px]
+            font-medium
+            text-red-600
+          "
+        >
+          {error}
+        </div>
+      )}
 
       {/* =================================================
           MEMBERS CARD
@@ -164,7 +528,6 @@ const TeamMembers = () => {
             py-2.5
           "
         >
-
           <div className="text-[9px] font-semibold text-[#60758A]">
             Member
           </div>
@@ -186,199 +549,251 @@ const TeamMembers = () => {
             <br />
             Active
           </div>
-
         </div>
 
-
         {/* =================================================
-            MEMBER ROWS
+            LOADING
         ================================================== */}
 
-        {members.map((member, index) => {
+        {loading ? (
+          <div
+            className="
+              flex
+              min-h-[260px]
+              items-center
+              justify-center
+            "
+          >
+            <p className="text-[9px] text-[#8495A5]">
+              Loading team members...
+            </p>
+          </div>
+        ) : members.length === 0 ? (
+          /* =================================================
+             EMPTY STATE
+          ================================================== */
 
-          const isLast =
-            index === members.length - 1;
+          <div
+            className="
+              flex
+              min-h-[180px]
+              items-center
+              justify-center
+            "
+          >
+            <p className="text-[9px] text-[#8495A5]">
+              No team members found.
+            </p>
+          </div>
+        ) : (
+          /* =================================================
+             MEMBER ROWS
+          ================================================== */
 
-          return (
-            <div
-              key={member.email}
-              className={`
-                grid
-                min-h-[52px]
-                grid-cols-[1.25fr_1.05fr_1.65fr_0.8fr_0.95fr]
-                items-center
-                px-3
-                py-2
-                ${
-                  !isLast
-                    ? "border-b border-[#E2E9EF]"
-                    : ""
-                }
-              `}
-            >
+          currentMembers.map(
+            (member, index) => {
+              const isLast =
+                index ===
+                currentMembers.length -
+                  1;
 
-              {/* =================================================
-                  MEMBER
-              ================================================== */}
+              const name =
+                getMemberName(
+                  member
+                );
 
-              <div className="flex min-w-0 items-center gap-2">
+              const role =
+                getMemberRole(
+                  member
+                );
 
-                {/* Avatar */}
-                {member.avatar ? (
-                  <img
-                    src={member.avatar}
-                    alt={member.name}
-                    className="
-                      h-[24px]
-                      w-[24px]
-                      shrink-0
-                      rounded-full
-                      object-cover
-                    "
-                  />
-                ) : (
-                  <div
-                    className="
-                      flex
-                      h-[24px]
-                      w-[24px]
-                      shrink-0
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-[#DCEAF9]
-                      text-[8px]
-                      font-bold
-                      text-[#244E75]
-                    "
-                  >
-                    {member.initials}
-                  </div>
-                )}
+              const status =
+                getMemberStatus(
+                  member
+                );
 
-                {/* Name */}
-                <div className="min-w-0">
+              const avatar =
+                getAvatar(member);
 
-                  <p
-                    className="
-                      text-[9px]
-                      font-semibold
-                      leading-[12px]
-                      text-[#17324D]
-                    "
-                  >
-                    {member.name.split(" ")[0]}
-                  </p>
+              const lastActive =
+                getLastActive(
+                  member
+                );
 
-                  <p
-                    className="
-                      text-[9px]
-                      font-semibold
-                      leading-[12px]
-                      text-[#17324D]
-                    "
-                  >
-                    {member.name.split(" ").slice(1).join(" ")}
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              {/* =================================================
-                  ROLE
-              ================================================== */}
-
-              <div
-                className="
-                  pr-2
-                  text-[8px]
-                  leading-[12px]
-                  text-[#60758A]
-                "
-              >
-                {member.role}
-              </div>
-
-
-              {/* =================================================
-                  EMAIL
-              ================================================== */}
-
-              <div
-                className="
-                  min-w-0
-                  truncate
-                  pr-2
-                  text-[8px]
-                  text-[#60758A]
-                "
-              >
-                {member.email}
-              </div>
-
-
-              {/* =================================================
-                  STATUS
-              ================================================== */}
-
-              <div>
-
-                <span
+              return (
+                <div
+                  key={
+                    member?._id ||
+                    member?.id ||
+                    member?.email ||
+                    index
+                  }
                   className={`
-                    inline-flex
+                    grid
+                    min-h-[52px]
+                    grid-cols-[1.25fr_1.05fr_1.65fr_0.8fr_0.95fr]
                     items-center
-                    rounded-full
-                    px-2
-                    py-[3px]
-                    text-[7px]
-                    font-semibold
+                    px-3
+                    py-2
                     ${
-                      member.status === "Active"
-                        ? "bg-[#E8F8EF] text-[#20A65A]"
-                        : "bg-[#FFF2E5] text-[#E88918]"
+                      !isLast
+                        ? "border-b border-[#E2E9EF]"
+                        : ""
                     }
                   `}
                 >
-                  {member.status}
-                </span>
 
-              </div>
+                  {/* =================================================
+                      MEMBER
+                  ================================================== */}
 
+                  <div className="flex min-w-0 items-center gap-2">
 
-              {/* =================================================
-                  LAST ACTIVE
-              ================================================== */}
+                    {/* Avatar */}
 
-              <div
-                className="
-                  text-[8px]
-                  leading-[12px]
-                  text-[#60758A]
-                "
-              >
-                {member.lastActive === "2 hours ago" ? (
-                  <>
-                    2 hours
-                    <br />
-                    ago
-                  </>
-                ) : member.lastActive === "Oct 24, 2023" ? (
-                  <>
-                    Oct 24,
-                    <br />
-                    2023
-                  </>
-                ) : (
-                  member.lastActive
-                )}
-              </div>
+                    {avatar ? (
+                      <img
+                        src={avatar}
+                        alt={name}
+                        className="
+                          h-[24px]
+                          w-[24px]
+                          shrink-0
+                          rounded-full
+                          object-cover
+                        "
+                      />
+                    ) : (
+                      <div
+                        className="
+                          flex
+                          h-[24px]
+                          w-[24px]
+                          shrink-0
+                          items-center
+                          justify-center
+                          rounded-full
+                          bg-[#DCEAF9]
+                          text-[8px]
+                          font-bold
+                          text-[#244E75]
+                        "
+                      >
+                        {getInitials(
+                          member
+                        )}
+                      </div>
+                    )}
 
-            </div>
-          );
-        })}
+                    {/* Name */}
 
+                    <div className="min-w-0">
+
+                      <p
+                        className="
+                          truncate
+                          text-[9px]
+                          font-semibold
+                          leading-[12px]
+                          text-[#17324D]
+                        "
+                      >
+                        {name}
+                      </p>
+
+                    </div>
+                  </div>
+
+                  {/* =================================================
+                      ROLE
+                  ================================================== */}
+
+                  <div
+                    className="
+                      min-w-0
+                      truncate
+                      pr-2
+                      text-[8px]
+                      leading-[12px]
+                      text-[#60758A]
+                    "
+                  >
+                    {role}
+                  </div>
+
+                  {/* =================================================
+                      EMAIL
+                  ================================================== */}
+
+                  <div
+                    className="
+                      min-w-0
+                      truncate
+                      pr-2
+                      text-[8px]
+                      text-[#60758A]
+                    "
+                  >
+                    {member?.email ||
+                      "—"}
+                  </div>
+
+                  {/* =================================================
+                      STATUS
+                  ================================================== */}
+
+                  <div>
+
+                    <span
+                      className={`
+                        inline-flex
+                        items-center
+                        rounded-full
+                        px-2
+                        py-[3px]
+                        text-[7px]
+                        font-semibold
+
+                        ${
+                          status ===
+                          "Active"
+                            ? "bg-[#E8F8EF] text-[#20A65A]"
+                            : status ===
+                              "Pending"
+                            ? "bg-[#FFF2E5] text-[#E88918]"
+                            : "bg-[#F1F3F5] text-[#75818D]"
+                        }
+                      `}
+                    >
+                      {status}
+                    </span>
+
+                  </div>
+
+                  {/* =================================================
+                      LAST ACTIVE
+                  ================================================== */}
+
+                  <div
+                    className="
+                      text-[8px]
+                      leading-[12px]
+                      text-[#60758A]
+                    "
+                  >
+                    {lastActive ===
+                    "—" ? (
+                      "—"
+                    ) : (
+                      lastActive
+                    )}
+                  </div>
+
+                </div>
+              );
+            }
+          )
+        )}
 
         {/* =================================================
             PAGINATION
@@ -398,51 +813,34 @@ const TeamMembers = () => {
         >
 
           {/* Count */}
+
           <p
             className="
               text-[8px]
               text-[#60758A]
             "
           >
-            Showing 1 to 5 of 12 members
+            Showing{" "}
+            {showingFrom} to{" "}
+            {showingTo} of{" "}
+            {members.length} members
           </p>
 
-
           {/* Buttons */}
+
           <div className="flex items-center gap-2">
 
-            <button
-              type="button"
-              onClick={handlePrevious}
-              className="
-                flex
-                h-[24px]
-                items-center
-                gap-1
-                rounded-[5px]
-                border
-                border-[#DCE5ED]
-                bg-white
-                px-2
-                text-[8px]
-                font-medium
-                text-[#A1AFBB]
-                transition-colors
-                hover:bg-[#F7F9FC]
-              "
-            >
-              <ChevronLeft
-                size={11}
-                strokeWidth={1.8}
-              />
-
-              Prev
-            </button>
-
+            {/* Previous */}
 
             <button
               type="button"
-              onClick={handleNext}
+              onClick={
+                handlePrevious
+              }
+              disabled={
+                currentPage === 1 ||
+                loading
+              }
               className="
                 flex
                 h-[24px]
@@ -458,6 +856,47 @@ const TeamMembers = () => {
                 text-[#60758A]
                 transition-colors
                 hover:bg-[#F7F9FC]
+                disabled:cursor-not-allowed
+                disabled:opacity-50
+              "
+            >
+              <ChevronLeft
+                size={11}
+                strokeWidth={1.8}
+              />
+
+              Prev
+            </button>
+
+            {/* Next */}
+
+            <button
+              type="button"
+              onClick={
+                handleNext
+              }
+              disabled={
+                currentPage >=
+                  totalPages ||
+                loading
+              }
+              className="
+                flex
+                h-[24px]
+                items-center
+                gap-1
+                rounded-[5px]
+                border
+                border-[#DCE5ED]
+                bg-white
+                px-2
+                text-[8px]
+                font-medium
+                text-[#60758A]
+                transition-colors
+                hover:bg-[#F7F9FC]
+                disabled:cursor-not-allowed
+                disabled:opacity-50
               "
             >
               Next
@@ -469,11 +908,8 @@ const TeamMembers = () => {
             </button>
 
           </div>
-
         </div>
-
       </Card>
-
     </div>
   );
 };

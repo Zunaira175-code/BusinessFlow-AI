@@ -1,8 +1,9 @@
 import { Outlet } from "react-router-dom";
+
 import Sidebar from "../layout/sidebar";
 import Header from "../layout/header";
 import PageContainer from "../layout/pagecontainer";
-import Footer from "../layout/footer";
+import DashboardFooter from "../layout/DashboardFooter";
 
 const AdminLayout = () => {
   return (
@@ -22,8 +23,8 @@ const AdminLayout = () => {
           <Outlet />
         </PageContainer>
 
-        {/* Footer */}
-        <Footer />
+        {/* Dashboard Footer */}
+        <DashboardFooter />
 
       </div>
 

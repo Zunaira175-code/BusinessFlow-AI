@@ -1,10 +1,18 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Zap, Eye, EyeOff } from "lucide-react";
 
+const API_URL = "http://localhost:5000/api";
+
 const Register = () => {
+    const navigate = useNavigate();
+
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
 
     const [formData, setFormData] = useState({
         firstName: "",
@@ -23,12 +31,110 @@ const Register = () => {
             ...prev,
             [name]: type === "checkbox" ? checked : value,
         }));
+
+        // Clear previous messages when user changes form
+        if (error) setError("");
+        if (success) setSuccess("");
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
-        console.log("Register Data:", formData);
+        setError("");
+        setSuccess("");
+
+        // Frontend validation
+        if (
+            !formData.firstName.trim() ||
+            !formData.lastName.trim() ||
+            !formData.email.trim() ||
+            !formData.companyName.trim() ||
+            !formData.password ||
+            !formData.confirmPassword
+        ) {
+            setError("Please fill in all required fields.");
+            return;
+        }
+
+        if (!formData.terms) {
+            setError(
+                "You must accept the Terms of Service and Privacy Policy."
+            );
+            return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            setError("Passwords do not match.");
+            return;
+        }
+
+        if (formData.password.length < 6) {
+            setError("Password must be at least 6 characters.");
+            return;
+        }
+
+        try {
+            setLoading(true);
+
+            const response = await fetch(
+                `${API_URL}/auth/register`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        firstName: formData.firstName.trim(),
+                        lastName: formData.lastName.trim(),
+                        email: formData.email.trim().toLowerCase(),
+                        companyName: formData.companyName.trim(),
+                        password: formData.password,
+                        confirmPassword: formData.confirmPassword,
+                        terms: formData.terms,
+                    }),
+                }
+            );
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(
+                    result.message || "Registration failed."
+                );
+            }
+
+            // Save authentication data
+            const token = result.data?.token;
+            const user = result.data?.user;
+
+            if (!token || !user) {
+                throw new Error(
+                    "Registration succeeded, but authentication data was not received."
+                );
+            }
+
+            localStorage.setItem("businessflow_token", token);
+            localStorage.setItem(
+                "businessflow_user",
+                JSON.stringify(user)
+            );
+
+            setSuccess("Account created successfully.");
+
+            // Redirect to dashboard
+            setTimeout(() => {
+                navigate("/admin/dashboard");
+            }, 500);
+        } catch (error) {
+            console.error("Register Error:", error);
+
+            setError(
+                error.message ||
+                "Something went wrong. Please try again."
+            );
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleGoogleLogin = () => {
@@ -39,77 +145,77 @@ const Register = () => {
         <div className="relative min-h-screen overflow-hidden bg-[#EEF5FF]">
 
             {/* =====================================================
-          BACKGROUND DECORATION
-      ====================================================== */}
+              BACKGROUND DECORATION
+          ====================================================== */}
 
             <div
                 className="
-          pointer-events-none
-          absolute
-          -left-[100px]
-          -top-[100px]
-          h-[420px]
-          w-[420px]
-          rounded-full
-          bg-[#D7E8FF]
-          opacity-80
-          blur-[50px]
-        "
+                    pointer-events-none
+                    absolute
+                    -left-[100px]
+                    -top-[100px]
+                    h-[420px]
+                    w-[420px]
+                    rounded-full
+                    bg-[#D7E8FF]
+                    opacity-80
+                    blur-[50px]
+                "
             />
 
             <div
                 className="
-          pointer-events-none
-          absolute
-          -bottom-[120px]
-          -right-[100px]
-          h-[400px]
-          w-[400px]
-          rounded-full
-          bg-[#D7E8FF]
-          opacity-80
-          blur-[50px]
-        "
+                    pointer-events-none
+                    absolute
+                    -bottom-[120px]
+                    -right-[100px]
+                    h-[400px]
+                    w-[400px]
+                    rounded-full
+                    bg-[#D7E8FF]
+                    opacity-80
+                    blur-[50px]
+                "
             />
 
             {/* =====================================================
-          MAIN CONTAINER
-      ====================================================== */}
+              MAIN CONTAINER
+          ====================================================== */}
 
             <div
                 className="
-          relative
-          z-10
-          flex
-          min-h-screen
-          items-center
-          justify-center
-          px-4
-          py-10
-        "
+                    relative
+                    z-10
+                    flex
+                    min-h-screen
+                    items-center
+                    justify-center
+                    px-4
+                    py-10
+                "
             >
 
                 <div className="w-full max-w-[800px]">
 
                     {/* =================================================
-              BRAND
-          ================================================= */}
+                      BRAND
+                  ================================================= */}
 
                     <div className="mb-5 flex flex-col items-center">
 
                         {/* Logo */}
                         <div
                             className="
-                flex
-                h-[36px]
-                w-[36px]
-                items-center
-                justify-center
-                rounded-[6px]
-                bg-[#0B3D6B]
-                text-white
-                shadow-sm
-              "
+                                flex
+                                h-[36px]
+                                w-[36px]
+                                items-center
+                                justify-center
+                                rounded-[6px]
+                                bg-[#0B3D6B]
+                                text-white
+                                shadow-sm
+                            "
                         >
                             <Zap
                                 size={18}
@@ -120,12 +226,12 @@ const Register = () => {
                         {/* Brand */}
                         <h1
                             className="
-                mt-2
-                text-[12px]
-                font-semibold
-                tracking-[-0.2px]
-                text-[#092D50]
-              "
+                                mt-2
+                                text-[12px]
+                                font-semibold
+                                tracking-[-0.2px]
+                                text-[#092D50]
+                            "
                         >
                             BusinessFlow AI
                         </h1>
@@ -134,22 +240,22 @@ const Register = () => {
 
 
                     {/* =================================================
-              REGISTER CARD
-          ================================================= */}
+                      REGISTER CARD
+                  ================================================= */}
 
                     <div
                         className="
-              mx-auto
-              w-full
-              max-w-[340px]
-              rounded-[9px]
-              border
-              border-[#DCE5EF]
-              bg-white
-              px-[22px]
-              py-[22px]
-              shadow-[0_10px_25px_rgba(15,45,75,0.11)]
-            "
+                            mx-auto
+                            w-full
+                            max-w-[340px]
+                            rounded-[9px]
+                            border
+                            border-[#DCE5EF]
+                            bg-white
+                            px-[22px]
+                            py-[22px]
+                            shadow-[0_10px_25px_rgba(15,45,75,0.11)]
+                        "
                     >
 
                         {/* Heading */}
@@ -157,22 +263,22 @@ const Register = () => {
 
                             <h2
                                 className="
-                  text-[17px]
-                  font-semibold
-                  tracking-[-0.3px]
-                  text-[#092D50]
-                "
+                                    text-[17px]
+                                    font-semibold
+                                    tracking-[-0.3px]
+                                    text-[#092D50]
+                                "
                             >
                                 Create Your Account
                             </h2>
 
                             <p
                                 className="
-                  mt-2
-                  text-[8px]
-                  leading-4
-                  text-[#70859A]
-                "
+                                    mt-2
+                                    text-[8px]
+                                    leading-4
+                                    text-[#70859A]
+                                "
                             >
                                 Start managing your business with an AI-powered CRM.
                             </p>
@@ -181,8 +287,8 @@ const Register = () => {
 
 
                         {/* =================================================
-                FORM
-            ================================================= */}
+                          FORM
+                      ================================================= */}
 
                         <form
                             onSubmit={handleSubmit}
@@ -190,8 +296,54 @@ const Register = () => {
                         >
 
                             {/* =================================================
-                  FIRST NAME + LAST NAME
-              ================================================= */}
+                              ERROR MESSAGE
+                          ================================================= */}
+
+                            {error && (
+                                <div
+                                    className="
+                                        mb-3
+                                        rounded-[4px]
+                                        border
+                                        border-red-200
+                                        bg-red-50
+                                        px-3
+                                        py-2
+                                        text-[8px]
+                                        leading-3
+                                        text-red-600
+                                    "
+                                >
+                                    {error}
+                                </div>
+                            )}
+
+                            {/* =================================================
+                              SUCCESS MESSAGE
+                          ================================================= */}
+
+                            {success && (
+                                <div
+                                    className="
+                                        mb-3
+                                        rounded-[4px]
+                                        border
+                                        border-green-200
+                                        bg-green-50
+                                        px-3
+                                        py-2
+                                        text-[8px]
+                                        leading-3
+                                        text-green-600
+                                    "
+                                >
+                                    {success}
+                                </div>
+                            )}
+
+                            {/* =================================================
+                              FIRST NAME + LAST NAME
+                          ================================================= */}
 
                             <div className="grid grid-cols-2 gap-3">
 
@@ -215,8 +367,8 @@ const Register = () => {
 
 
                             {/* =================================================
-                  WORK EMAIL
-              ================================================= */}
+                              WORK EMAIL
+                          ================================================= */}
 
                             <div className="mt-3">
 
@@ -233,8 +385,8 @@ const Register = () => {
 
 
                             {/* =================================================
-                  COMPANY NAME
-              ================================================= */}
+                              COMPANY NAME
+                          ================================================= */}
 
                             <div className="mt-3">
 
@@ -250,20 +402,20 @@ const Register = () => {
 
 
                             {/* =================================================
-                  PASSWORD
-              ================================================= */}
+                              PASSWORD
+                          ================================================= */}
 
                             <div className="mt-3">
 
                                 <label
                                     htmlFor="password"
                                     className="
-                    mb-1.5
-                    block
-                    text-[8px]
-                    font-semibold
-                    text-[#173B5C]
-                  "
+                                        mb-1.5
+                                        block
+                                        text-[8px]
+                                        font-semibold
+                                        text-[#173B5C]
+                                    "
                                 >
                                     Password
                                 </label>
@@ -273,43 +425,49 @@ const Register = () => {
                                     <input
                                         id="password"
                                         name="password"
-                                        type={showPassword ? "text" : "password"}
+                                        type={
+                                            showPassword
+                                                ? "text"
+                                                : "password"
+                                        }
                                         placeholder="Create a password"
                                         value={formData.password}
                                         onChange={handleChange}
                                         className="
-                      h-[32px]
-                      w-full
-                      rounded-[4px]
-                      border
-                      border-[#D8E2EC]
-                      bg-white
-                      px-3
-                      pr-9
-                      text-[9px]
-                      text-[#173B5C]
-                      outline-none
-                      placeholder:text-[#9AAABA]
-                      focus:border-[#7AAFE4]
-                      focus:ring-1
-                      focus:ring-[#D9EAFB]
-                    "
+                                            h-[32px]
+                                            w-full
+                                            rounded-[4px]
+                                            border
+                                            border-[#D8E2EC]
+                                            bg-white
+                                            px-3
+                                            pr-9
+                                            text-[9px]
+                                            text-[#173B5C]
+                                            outline-none
+                                            placeholder:text-[#9AAABA]
+                                            focus:border-[#7AAFE4]
+                                            focus:ring-1
+                                            focus:ring-[#D9EAFB]
+                                        "
                                     />
 
                                     <button
                                         type="button"
                                         onClick={() =>
-                                            setShowPassword((prev) => !prev)
+                                            setShowPassword(
+                                                (prev) => !prev
+                                            )
                                         }
                                         className="
-                      absolute
-                      right-2
-                      top-1/2
-                      -translate-y-1/2
-                      text-[#7890A5]
-                      transition-colors
-                      hover:text-[#173B5C]
-                    "
+                                            absolute
+                                            right-2
+                                            top-1/2
+                                            -translate-y-1/2
+                                            text-[#7890A5]
+                                            transition-colors
+                                            hover:text-[#173B5C]
+                                        "
                                         aria-label="Toggle password visibility"
                                     >
                                         {showPassword ? (
@@ -325,20 +483,20 @@ const Register = () => {
 
 
                             {/* =================================================
-                  CONFIRM PASSWORD
-              ================================================= */}
+                              CONFIRM PASSWORD
+                          ================================================= */}
 
                             <div className="mt-3">
 
                                 <label
                                     htmlFor="confirmPassword"
                                     className="
-                    mb-1.5
-                    block
-                    text-[8px]
-                    font-semibold
-                    text-[#173B5C]
-                  "
+                                        mb-1.5
+                                        block
+                                        text-[8px]
+                                        font-semibold
+                                        text-[#173B5C]
+                                    "
                                 >
                                     Confirm Password
                                 </label>
@@ -357,22 +515,22 @@ const Register = () => {
                                         value={formData.confirmPassword}
                                         onChange={handleChange}
                                         className="
-                      h-[32px]
-                      w-full
-                      rounded-[4px]
-                      border
-                      border-[#D8E2EC]
-                      bg-white
-                      px-3
-                      pr-9
-                      text-[9px]
-                      text-[#173B5C]
-                      outline-none
-                      placeholder:text-[#9AAABA]
-                      focus:border-[#7AAFE4]
-                      focus:ring-1
-                      focus:ring-[#D9EAFB]
-                    "
+                                            h-[32px]
+                                            w-full
+                                            rounded-[4px]
+                                            border
+                                            border-[#D8E2EC]
+                                            bg-white
+                                            px-3
+                                            pr-9
+                                            text-[9px]
+                                            text-[#173B5C]
+                                            outline-none
+                                            placeholder:text-[#9AAABA]
+                                            focus:border-[#7AAFE4]
+                                            focus:ring-1
+                                            focus:ring-[#D9EAFB]
+                                        "
                                     />
 
                                     <button
@@ -383,14 +541,14 @@ const Register = () => {
                                             )
                                         }
                                         className="
-                      absolute
-                      right-2
-                      top-1/2
-                      -translate-y-1/2
-                      text-[#7890A5]
-                      transition-colors
-                      hover:text-[#173B5C]
-                    "
+                                            absolute
+                                            right-2
+                                            top-1/2
+                                            -translate-y-1/2
+                                            text-[#7890A5]
+                                            transition-colors
+                                            hover:text-[#173B5C]
+                                        "
                                         aria-label="Toggle confirm password visibility"
                                     >
                                         {showConfirmPassword ? (
@@ -406,17 +564,17 @@ const Register = () => {
 
 
                             {/* =================================================
-                  TERMS
-              ================================================= */}
+                              TERMS
+                          ================================================= */}
 
                             <label
                                 className="
-                  mt-3
-                  flex
-                  cursor-pointer
-                  items-start
-                  gap-2
-                "
+                                    mt-3
+                                    flex
+                                    cursor-pointer
+                                    items-start
+                                    gap-2
+                                "
                             >
 
                                 <input
@@ -425,28 +583,28 @@ const Register = () => {
                                     checked={formData.terms}
                                     onChange={handleChange}
                                     className="
-                    mt-[2px]
-                    h-[11px]
-                    w-[11px]
-                    accent-[#0B3D6B]
-                  "
+                                        mt-[2px]
+                                        h-[11px]
+                                        w-[11px]
+                                        accent-[#0B3D6B]
+                                    "
                                 />
 
                                 <span
                                     className="
-                    text-[7px]
-                    leading-[11px]
-                    text-[#61788E]
-                  "
+                                        text-[7px]
+                                        leading-[11px]
+                                        text-[#61788E]
+                                    "
                                 >
                                     I agree to the{" "}
                                     <a
                                         href="#"
                                         className="
-                      font-medium
-                      text-[#173B5C]
-                      hover:underline
-                    "
+                                            font-medium
+                                            text-[#173B5C]
+                                            hover:underline
+                                        "
                                     >
                                         Terms of Service
                                     </a>{" "}
@@ -454,10 +612,10 @@ const Register = () => {
                                     <a
                                         href="#"
                                         className="
-                      font-medium
-                      text-[#173B5C]
-                      hover:underline
-                    "
+                                            font-medium
+                                            text-[#173B5C]
+                                            hover:underline
+                                        "
                                     >
                                         Privacy Policy
                                     </a>
@@ -467,33 +625,38 @@ const Register = () => {
 
 
                             {/* =================================================
-                  CREATE ACCOUNT BUTTON
-              ================================================= */}
+                              CREATE ACCOUNT BUTTON
+                          ================================================= */}
 
                             <button
                                 type="submit"
-                                className="
-                  mt-3
-                  h-[32px]
-                  w-full
-                  rounded-[4px]
-                  bg-[#0B3D6B]
-                  text-[9px]
-                  font-semibold
-                  text-white
-                  transition-all
-                  duration-200
-                  hover:bg-[#0A3156]
-                  active:scale-[0.99]
-                "
+                                disabled={loading}
+                                className={`
+                                    mt-3
+                                    h-[32px]
+                                    w-full
+                                    rounded-[4px]
+                                    text-[9px]
+                                    font-semibold
+                                    text-white
+                                    transition-all
+                                    duration-200
+                                    active:scale-[0.99]
+                                    ${loading
+                                        ? "cursor-not-allowed bg-[#6F8AA3]"
+                                        : "bg-[#0B3D6B] hover:bg-[#0A3156]"
+                                    }
+                                `}
                             >
-                                Create Account
+                                {loading
+                                    ? "Creating Account..."
+                                    : "Create Account"}
                             </button>
 
 
                             {/* =================================================
-                  OR DIVIDER
-              ================================================= */}
+                              OR DIVIDER
+                          ================================================= */}
 
                             <div className="my-3 flex items-center gap-2.5">
 
@@ -501,10 +664,10 @@ const Register = () => {
 
                                 <span
                                     className="
-                    text-[7px]
-                    font-medium
-                    text-[#91A2B2]
-                  "
+                                        text-[7px]
+                                        font-medium
+                                        text-[#91A2B2]
+                                    "
                                 >
                                     OR
                                 </span>
@@ -515,32 +678,31 @@ const Register = () => {
 
 
                             {/* =================================================
-    GOOGLE BUTTON
-================================================= */}
+                              GOOGLE BUTTON
+                          ================================================= */}
 
                             <button
                                 type="button"
                                 onClick={handleGoogleLogin}
                                 className="
-    flex
-    h-[32px]
-    w-full
-    items-center
-    justify-center
-    gap-2
-    rounded-[4px]
-    border
-    border-[#D8E2EC]
-    bg-white
-    text-[9px]
-    font-semibold
-    text-[#173B5C]
-    transition-all
-    duration-200
-    hover:bg-[#F8FAFC]
-  "
+                                    flex
+                                    h-[32px]
+                                    w-full
+                                    items-center
+                                    justify-center
+                                    gap-2
+                                    rounded-[4px]
+                                    border
+                                    border-[#D8E2EC]
+                                    bg-white
+                                    text-[9px]
+                                    font-semibold
+                                    text-[#173B5C]
+                                    transition-all
+                                    duration-200
+                                    hover:bg-[#F8FAFC]
+                                "
                             >
-                                {/* Google Colorful Icon */}
                                 <svg
                                     width="14"
                                     height="14"
@@ -577,26 +739,26 @@ const Register = () => {
 
 
                     {/* =================================================
-              SIGN IN
-          ================================================= */}
+                      SIGN IN
+                  ================================================= */}
 
                     <div className="mt-5 text-center">
 
                         <p
                             className="
-                text-[8px]
-                text-[#667D92]
-              "
+                                text-[8px]
+                                text-[#667D92]
+                            "
                         >
                             Already have an account?{" "}
 
                             <Link
                                 to="/login"
                                 className="
-                  font-semibold
-                  text-[#173B5C]
-                  hover:underline
-                "
+                                    font-semibold
+                                    text-[#173B5C]
+                                    hover:underline
+                                "
                             >
                                 Sign in
                             </Link>
@@ -631,12 +793,12 @@ const FormField = ({
             <label
                 htmlFor={name}
                 className="
-          mb-1.5
-          block
-          text-[8px]
-          font-semibold
-          text-[#173B5C]
-        "
+                    mb-1.5
+                    block
+                    text-[8px]
+                    font-semibold
+                    text-[#173B5C]
+                "
             >
                 {label}
             </label>
@@ -649,21 +811,21 @@ const FormField = ({
                 value={value}
                 onChange={onChange}
                 className="
-          h-[32px]
-          w-full
-          rounded-[4px]
-          border
-          border-[#D8E2EC]
-          bg-white
-          px-3
-          text-[9px]
-          text-[#173B5C]
-          outline-none
-          placeholder:text-[#9AAABA]
-          focus:border-[#7AAFE4]
-          focus:ring-1
-          focus:ring-[#D9EAFB]
-        "
+                    h-[32px]
+                    w-full
+                    rounded-[4px]
+                    border
+                    border-[#D8E2EC]
+                    bg-white
+                    px-3
+                    text-[9px]
+                    text-[#173B5C]
+                    outline-none
+                    placeholder:text-[#9AAABA]
+                    focus:border-[#7AAFE4]
+                    focus:ring-1
+                    focus:ring-[#D9EAFB]
+                "
             />
 
         </div>

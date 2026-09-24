@@ -1,11 +1,130 @@
-import { Link, useLocation } from "react-router-dom";
-import { MailCheck } from "lucide-react";
+import { useState } from "react";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+import { MailCheck, ArrowRight } from "lucide-react";
+
+const API_URL = "http://localhost:5000/api";
 
 const CheckEmail = () => {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // Email can be passed from Forgot Password page
-  const email = location.state?.email || "";
+  // =====================================================
+  // DATA FROM FORGOT PASSWORD PAGE
+  // =====================================================
+
+  const initialEmail = location.state?.email || "";
+  const initialResetUrl = location.state?.resetUrl || "";
+
+  const [email] = useState(initialEmail);
+  const [resetUrl, setResetUrl] = useState(initialResetUrl);
+
+  const [resending, setResending] = useState(false);
+  const [error, setError] = useState("");
+
+  // =====================================================
+  // RESEND RESET EMAIL
+  // =====================================================
+
+  const handleResend = async () => {
+    if (!email) {
+      setError(
+        "Email address is missing. Please go back and enter your email again."
+      );
+      return;
+    }
+
+    setError("");
+    setResending(true);
+
+    try {
+      const response = await fetch(
+        `${API_URL}/auth/forgot-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        setError(
+          result.message ||
+            "Unable to resend the password reset instructions."
+        );
+
+        setResending(false);
+        return;
+      }
+
+      // =================================================
+      // UPDATE RESET URL
+      // =================================================
+
+      const newResetUrl = result.data?.resetUrl || "";
+
+      if (newResetUrl) {
+        setResetUrl(newResetUrl);
+      }
+
+      setResending(false);
+
+    } catch (error) {
+      console.error("Resend Password Reset Error:", error);
+
+      setError(
+        "Unable to connect to the server. Please make sure the backend is running."
+      );
+
+      setResending(false);
+    }
+  };
+
+  // =====================================================
+  // OPEN RESET PASSWORD PAGE
+  // =====================================================
+
+  const handleResetPassword = () => {
+    if (!resetUrl) {
+      setError(
+        "Reset link is not available. Please resend the reset email."
+      );
+      return;
+    }
+
+    /*
+     * Backend currently returns:
+     * http://localhost:5173/reset-password?token=...
+     *
+     * Extract token and navigate using React Router.
+     */
+    try {
+      const url = new URL(resetUrl);
+      const token = url.searchParams.get("token");
+
+      if (!token) {
+        setError("Invalid password reset link.");
+        return;
+      }
+
+      navigate(
+        `/reset-password?token=${encodeURIComponent(token)}`
+      );
+    } catch (error) {
+      console.error("Reset URL Error:", error);
+
+      setError("Invalid password reset link.");
+    }
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#EEF5FF]">
@@ -89,7 +208,6 @@ const CheckEmail = () => {
 
           </div>
 
-
           {/* =================================================
               CHECK EMAIL CARD
           ================================================= */}
@@ -140,7 +258,6 @@ const CheckEmail = () => {
 
             </div>
 
-
             {/* =================================================
                 CONTENT
             ================================================= */}
@@ -189,6 +306,65 @@ const CheckEmail = () => {
 
             </div>
 
+            {/* =================================================
+                ERROR MESSAGE
+            ================================================= */}
+
+            {error && (
+              <div
+                className="
+                  mt-4
+                  rounded-[4px]
+                  border
+                  border-[#F5C2C7]
+                  bg-[#FFF1F2]
+                  px-3
+                  py-2
+                  text-center
+                  text-[7px]
+                  leading-[11px]
+                  text-[#B42318]
+                "
+              >
+                {error}
+              </div>
+            )}
+
+            {/* =================================================
+                RESET PASSWORD BUTTON
+            ================================================= */}
+
+            {resetUrl && (
+              <button
+                type="button"
+                onClick={handleResetPassword}
+                className="
+                  mt-5
+                  flex
+                  h-[32px]
+                  w-full
+                  items-center
+                  justify-center
+                  gap-1.5
+                  rounded-[4px]
+                  bg-[#0B3D6B]
+                  text-[8px]
+                  font-semibold
+                  text-white
+                  transition-all
+                  duration-200
+                  hover:bg-[#0A3156]
+                  active:scale-[0.99]
+                "
+              >
+                Open Reset Password
+
+                <ArrowRight
+                  size={11}
+                  strokeWidth={2}
+                />
+              </button>
+            )}
 
             {/* =================================================
                 BACK TO LOGIN
@@ -196,8 +372,7 @@ const CheckEmail = () => {
 
             <Link
               to="/login"
-              className="
-                mt-6
+              className={`
                 flex
                 h-[32px]
                 w-full
@@ -212,18 +387,17 @@ const CheckEmail = () => {
                 duration-200
                 hover:bg-[#0A3156]
                 active:scale-[0.99]
-              "
+                ${resetUrl ? "mt-2" : "mt-6"}
+              `}
             >
               Back to Login
             </Link>
-
 
             {/* =================================================
                 DIVIDER
             ================================================= */}
 
             <div className="my-4 h-px w-full bg-[#E3E9EF]" />
-
 
             {/* =================================================
                 RESEND
@@ -240,16 +414,17 @@ const CheckEmail = () => {
 
               <button
                 type="button"
-                onClick={() => {
-                  console.log("Resend email");
-                }}
+                onClick={handleResend}
+                disabled={resending}
                 className="
                   font-semibold
                   text-[#173B5C]
                   hover:underline
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
                 "
               >
-                Resend email
+                {resending ? "Sending..." : "Resend email"}
               </button>
             </p>
 

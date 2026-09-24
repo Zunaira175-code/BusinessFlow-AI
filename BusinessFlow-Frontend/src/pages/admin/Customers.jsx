@@ -1,7 +1,6 @@
 import CustomersHeader from "../../components/Customers/Customerheader";
 import CustomerStats from "../../components/Customers/CustomerStats";
 import CustomerDirectory from "../../components/Customers/CustomerDirectory";
-import CustomerHealthIntelligence from "../../components/Customers/CustomerHealthIntelligence";
 import RecentCustomerActivity from "../../components/Customers/RecentCustomerActivity";
 
 const Customers = () => {
@@ -26,21 +25,10 @@ const Customers = () => {
       {/* =====================================================
           3. CUSTOMER DIRECTORY + HEALTH INTELLIGENCE
       ====================================================== */}
-      <section
-        className="
-          mt-5
-          grid
-          w-full
-          grid-cols-[minmax(0,1fr)_200px]
-          gap-4
-        "
-      >
+      <div className="mt-5 w-full">
         {/* Customer Table */}
         <CustomerDirectory />
-
-        {/* AI Customer Health */}
-        <CustomerHealthIntelligence />
-      </section>
+      </div>
 
 
       {/* =====================================================
