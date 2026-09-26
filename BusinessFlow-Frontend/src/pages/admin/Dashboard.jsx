@@ -8,6 +8,7 @@ import InsightCards from "../../components/AdminDashboard/InsightCards";
 import ActivityFeed from "../../components/AdminDashboard/ActivityFeed";
 import TaskUpcoming from "../../components/AdminDashboard/TaskUpcoming";
 import TeamPerformance from "../../components/AdminDashboard/TeamPerformance";
+import AIInsights from "../../components/AdminDashboard/AIInsights";
 
 const Dashboard = () => {
   return (
@@ -41,6 +42,8 @@ const Dashboard = () => {
         </div>
       </section>
 
+    
+
 
       {/* =====================================================
           4. RECENT LEADS
@@ -59,12 +62,12 @@ const Dashboard = () => {
 
 
       {/* =====================================================
-          6. INSIGHT CARDS
-          Lead Prioritization | Deal Risk | Optimal Follow-up
-      ====================================================== */}
+    3. AI BUSINESS INSIGHTS
+====================================================== */}
       <section className="mt-4">
-        <InsightCards />
+        <AIInsights />
       </section>
+
 
 
       {/* =====================================================

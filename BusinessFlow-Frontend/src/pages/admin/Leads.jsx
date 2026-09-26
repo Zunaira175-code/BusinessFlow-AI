@@ -4,6 +4,7 @@ import LeadsHeader from "../../components/Leads/LeadsHeader";
 import LeadsStats from "../../components/Leads/LeadsStats";
 import LeadsToolbar from "../../components/Leads/LeadsToolbar";
 import LeadsTable from "../../components/Leads/LeadsTable";
+import AILeadIntelligence from "../../components/Leads/AILeadIntelligence";
 
 const Leads = () => {
   // =====================================================
@@ -63,6 +64,14 @@ const Leads = () => {
       ================================================= */}
 
       <LeadsStats />
+
+      {/* =================================================
+          AI LEAD INTELLIGENCE
+      ================================================= */}
+
+      <div className="mt-6">
+        <AILeadIntelligence />
+      </div>
 
       {/* =================================================
           TOOLBAR

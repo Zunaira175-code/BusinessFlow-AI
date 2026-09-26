@@ -1,316 +1,94 @@
 import { useEffect, useState } from "react";
-
-const API_URL = "http://localhost:5000/api";
+import { getReportAIInsights } from "../../services/aiService";
 
 const AIAnalyticsInsights = () => {
   const [insights, setInsights] = useState([]);
+  const [summary, setSummary] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // =====================================================
-  // GET AUTH TOKEN
-  // =====================================================
-
-  const getToken = () => {
-    return (
-      localStorage.getItem("businessflow_token") ||
-      sessionStorage.getItem("businessflow_token")
-    );
-  };
-
-  // =====================================================
-  // FETCH AI ANALYTICS
-  // =====================================================
-
   useEffect(() => {
-    const fetchAIAnalysis = async () => {
+    let mounted = true;
+
+    const loadAIInsights = async () => {
       try {
         setLoading(true);
         setError("");
 
-        const token = getToken();
+        const result = await getReportAIInsights();
 
-        if (!token) {
-          throw new Error(
-            "Authentication token not found. Please login again."
-          );
-        }
+        if (!mounted) return;
 
-        const response = await fetch(
-          `${API_URL}/reports/ai-analysis?period=30`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
+        const aiData = result?.data || {};
+
+        setSummary(aiData?.summary || "");
+        setInsights(
+          Array.isArray(aiData?.insights)
+            ? aiData.insights
+            : []
         );
+      } catch (err) {
+        console.error("Reports AI Insights Error:", err);
 
-        let result;
-
-        try {
-          result = await response.json();
-        } catch {
-          throw new Error(
-            "The server returned an invalid response."
-          );
-        }
-
-        if (!response.ok || !result?.success) {
-          throw new Error(
-            result?.message ||
-              "Unable to load AI analytics insights."
-          );
-        }
-
-        const insightData = result?.data?.insights || [];
-
-        if (!Array.isArray(insightData)) {
-          throw new Error(
-            "Invalid AI analytics data received from server."
-          );
-        }
-
-        setInsights(insightData);
-      } catch (error) {
-        console.error(
-          "AI Analytics Insights Error:",
-          error
-        );
+        if (!mounted) return;
 
         setError(
-          error?.message ||
-            "Unable to load AI analytics insights."
+          err?.message || "Unable to load AI report insights."
         );
       } finally {
-        setLoading(false);
+        if (mounted) setLoading(false);
       }
     };
 
-    fetchAIAnalysis();
+    loadAIInsights();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // =====================================================
-  // ICONS
-  // =====================================================
-
-  const icons = {
-    trend: (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-      >
-        <path
-          d="M4 15L9 10L13 14L20 7"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        <path
-          d="M15 7H20V12"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-
-    risk: (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-      >
-        <path
-          d="M12 4L21 19H3L12 4Z"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinejoin="round"
-        />
-
-        <path
-          d="M12 9V13"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        />
-
-        <circle
-          cx="12"
-          cy="16"
-          r="1"
-          fill="currentColor"
-        />
-      </svg>
-    ),
-
-    opportunity: (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-      >
-        <path
-          d="M9 18H15"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        />
-
-        <path
-          d="M10 21H14"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinecap="round"
-        />
-
-        <path
-          d="M8 14.5C6.8 13.5 6 12 6 10.3C6 7.2 8.7 5 12 5C15.3 5 18 7.2 18 10.3C18 12 17.2 13.5 16 14.5C15.2 15.2 15 16 15 17H9C9 16 8.8 15.2 8 14.5Z"
-          stroke="currentColor"
-          strokeWidth="1.7"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-
-    performance: (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-      >
-        <circle
-          cx="12"
-          cy="12"
-          r="8"
-          stroke="currentColor"
-          strokeWidth="1.7"
-        />
-
-        <path
-          d="M8 12L10.5 14.5L16 9"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-
-    action: (
-      <svg
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-      >
-        <circle
-          cx="12"
-          cy="12"
-          r="8"
-          stroke="currentColor"
-          strokeWidth="1.7"
-        />
-
-        <path
-          d="M8 12L10.5 14.5L16 9"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-    ),
-  };
-
-  // =====================================================
-  // ICON STYLES
-  // =====================================================
-
-  const iconStyles = {
-    trend: "bg-[#E5F7EC] text-[#16A05D]",
-    risk: "bg-[#FFF1DE] text-[#F28A00]",
-    opportunity: "bg-[#E4F4FF] text-[#168BD0]",
-    performance: "bg-[#E8EDF2] text-[#24384B]",
-    action: "bg-[#E8EDF2] text-[#24384B]",
-  };
-
-  // =====================================================
-  // LOADING STATE
+  // LOADING
   // =====================================================
 
   if (loading) {
     return (
-      <section className="w-full rounded-[9px] border border-[#CFE2FA] bg-[#EEF5FF] p-4">
+      <section className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="h-8 w-8 animate-pulse rounded-lg bg-blue-100" />
 
-        {/* Header */}
-        <div className="mb-3 flex items-center gap-2">
-          <span className="text-[16px] leading-none text-[#008FD5]">
-            ✦
-          </span>
-
-          <h2 className="text-[16px] font-bold leading-[20px] text-[#102A43]">
-            AI Analytics Insights
-          </h2>
+          <div>
+            <div className="h-3.5 w-36 animate-pulse rounded bg-slate-200" />
+            <div className="mt-1.5 h-2.5 w-52 animate-pulse rounded bg-slate-100" />
+          </div>
         </div>
 
-        {/* Skeleton */}
-        <div className="grid grid-cols-2 gap-3">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div
-              key={index}
-              className="flex min-h-[80px] items-start gap-3 rounded-[6px] border border-[#D9E4EF] bg-white px-3.5 py-3"
-            >
-              <div className="h-[25px] w-[25px] shrink-0 animate-pulse rounded-full bg-[#E8EEF4]" />
-
-              <div className="min-w-0 flex-1">
-                <div className="h-2.5 w-40 animate-pulse rounded bg-[#E8EEF4]" />
-
-                <div className="mt-2 h-2 w-full animate-pulse rounded bg-[#EEF2F5]" />
-
-                <div className="mt-1 h-2 w-4/5 animate-pulse rounded bg-[#EEF2F5]" />
-              </div>
-            </div>
-          ))}
+        <div className="mt-4 space-y-2">
+          <div className="h-14 animate-pulse rounded-lg bg-slate-100" />
+          <div className="h-14 animate-pulse rounded-lg bg-slate-100" />
         </div>
       </section>
     );
   }
 
   // =====================================================
-  // ERROR STATE
+  // ERROR
   // =====================================================
 
   if (error) {
     return (
-      <section className="w-full rounded-[9px] border border-[#CFE2FA] bg-[#EEF5FF] p-4">
+      <section className="w-full rounded-xl border border-red-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-100 text-sm font-semibold text-red-600">
+            !
+          </div>
 
-        <div className="mb-3 flex items-center gap-2">
-          <span className="text-[16px] leading-none text-[#008FD5]">
-            ✦
-          </span>
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">
+              AI Analytics
+            </h3>
 
-          <h2 className="text-[16px] font-bold leading-[20px] text-[#102A43]">
-            AI Analytics Insights
-          </h2>
-        </div>
-
-        <div className="flex min-h-[80px] items-center justify-center rounded-[6px] border border-[#D9E4EF] bg-white">
-          <div className="text-center">
-            <p className="text-[10px] font-semibold text-[#B42318]">
-              Unable to load AI insights
-            </p>
-
-            <p className="mt-1 text-[8px] text-[#71869A]">
+            <p className="mt-0.5 text-xs text-red-600">
               {error}
             </p>
           </div>
@@ -320,67 +98,146 @@ const AIAnalyticsInsights = () => {
   }
 
   // =====================================================
-  // MAIN
+  // EMPTY
+  // =====================================================
+
+  if (!insights.length) {
+    return (
+      <section className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-sm text-blue-600">
+            ✦
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">
+              AI Analytics Insights
+            </h3>
+
+            <p className="mt-0.5 text-xs text-slate-500">
+              {summary ||
+                "No significant AI insights were identified."}
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // =====================================================
+  // INSIGHTS
   // =====================================================
 
   return (
-    <section className="w-full rounded-[9px] border border-[#CFE2FA] bg-[#EEF5FF] p-4">
+    <section className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
 
-      {/* Section Header */}
-      <div className="mb-3 flex items-center gap-2">
-        <span className="text-[16px] leading-none text-[#008FD5]">
-          ✦
+      {/* HEADER */}
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-sm text-blue-600">
+            ✦
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">
+              AI Analytics Insights
+            </h3>
+
+            <p className="text-[11px] text-slate-500">
+              AI-powered CRM analysis
+            </p>
+          </div>
+        </div>
+
+        <span className="rounded-full bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-600">
+          Gemini AI
         </span>
-
-        <h2 className="text-[16px] font-bold leading-[20px] text-[#102A43]">
-          AI Analytics Insights
-        </h2>
       </div>
 
-      {/* No Insights */}
-      {insights.length === 0 ? (
-        <div className="flex min-h-[80px] items-center justify-center rounded-[6px] border border-[#D9E4EF] bg-white">
-          <p className="text-[9px] text-[#71869A]">
-            No analytics insights available for this period.
+      {/* SUMMARY */}
+
+      {summary && (
+        <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+          <p className="text-xs leading-5 text-slate-700">
+            {summary}
           </p>
         </div>
-      ) : (
-        /* Insight Cards */
-        <div className="grid grid-cols-2 gap-3">
-          {insights.map((insight, index) => {
-            const type = insight.type || "action";
+      )}
 
-            return (
-              <div
-                key={`${insight.title}-${index}`}
-                className="flex min-h-[80px] items-start gap-3 rounded-[6px] border border-[#D9E4EF] bg-white px-3.5 py-3"
-              >
-                {/* Icon */}
-                <div
-                  className={`mt-0.5 flex h-[25px] w-[25px] shrink-0 items-center justify-center rounded-full ${
-                    iconStyles[type] ||
-                    iconStyles.action
-                  }`}
-                >
-                  {icons[type] || icons.action}
-                </div>
+      {/* INSIGHTS */}
 
-                {/* Content */}
-                <div className="min-w-0">
-                  <h3 className="text-[9px] font-bold leading-[13px] text-[#102A43]">
-                    {insight.title || "Analytics Insight"}
-                  </h3>
+      <div className="mt-3 space-y-2">
+        {insights.map((insight, index) => {
+          const type = insight?.type || "performance";
 
-                  <p className="mt-1 text-[8.5px] leading-[13px] text-[#60768A]">
-                    {insight.description ||
-                      "No description available."}
+          const title = insight?.title || "AI Insight";
+
+          const description =
+            insight?.summary ||
+            insight?.description ||
+            "No description available.";
+
+          const priority = insight?.priority || "medium";
+
+          return (
+            <div
+              key={`${title}-${index}`}
+              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5"
+            >
+              {/* TYPE + PRIORITY */}
+
+              <div className="flex items-center gap-1.5">
+                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium capitalize text-slate-600">
+                  {type}
+                </span>
+
+                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium capitalize text-slate-500">
+                  {priority}
+                </span>
+              </div>
+
+              {/* TITLE */}
+
+              <h4 className="mt-1.5 text-xs font-semibold text-slate-900">
+                {title}
+              </h4>
+
+              {/* DESCRIPTION */}
+
+              <p className="mt-0.5 text-xs leading-5 text-slate-600">
+                {description}
+              </p>
+
+              {/* RECOMMENDED ACTION */}
+
+              {insight?.recommendedAction && (
+                <div className="mt-2 rounded-md border border-slate-200 bg-white px-2.5 py-2">
+                  <p className="text-[9px] font-semibold uppercase tracking-wide text-slate-400">
+                    Recommended Action
+                  </p>
+
+                  <p className="mt-0.5 text-[11px] leading-4 text-slate-600">
+                    {insight.recommendedAction}
                   </p>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              )}
+
+              {/* SOURCES */}
+
+              {Array.isArray(insight?.sourceRecords) &&
+                insight.sourceRecords.length > 0 && (
+                  <p className="mt-1.5 text-[10px] text-slate-400">
+                    {insight.sourceRecords.length} CRM source
+                    {insight.sourceRecords.length !== 1
+                      ? "s"
+                      : ""}
+                  </p>
+                )}
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 };

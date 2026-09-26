@@ -5,6 +5,7 @@ import DealsStats from "../../components/Deals/DealsStats";
 import DealsToolbar from "../../components/Deals/DealsToolbar";
 import DealsPipeline from "../../components/Deals/DealsPipeline";
 import AIPipelineAnalytics from "../../components/Deals/AIPipelineAnalytics";
+import AIDealIntelligence from "../../components/Deals/AIDealIntelligence";
 
 import api from "../../services/api";
 
@@ -194,7 +195,11 @@ useEffect(() => {
 
       {/* Pagination will be connected here later */}
 
-      <AIPipelineAnalytics />
+    
+
+      <div className="mt-5">
+  <AIDealIntelligence />
+</div>
     </div>
   );
 };

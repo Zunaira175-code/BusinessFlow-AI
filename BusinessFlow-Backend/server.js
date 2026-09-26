@@ -24,6 +24,12 @@ const settingsRoutes = require("./src/routes/settingsRoutes");
 const integrationRoutes = require("./src/routes/integrationRoutes");
 
 // =====================================================
+// AI ROUTES
+// =====================================================
+
+const aiRoutes = require("./src/routes/aiRoutes");
+
+// =====================================================
 // APP
 // =====================================================
 
@@ -362,24 +368,10 @@ app.use(
 // Base:
 // /api/integrations
 //
-// Get all integrations:
-//
-// GET /api/integrations
-//
-// Available integrations:
-//
-// GET /api/integrations/available
-//
-// Connect integration:
-//
-// POST /api/integrations/connect
-//
-// Configure / Update integration:
-//
-// PATCH /api/integrations/:id
-//
-// Disconnect integration:
-//
+// GET    /api/integrations
+// GET    /api/integrations/available
+// POST   /api/integrations/connect
+// PATCH  /api/integrations/:id
 // DELETE /api/integrations/:id
 //
 // =====================================================
@@ -387,6 +379,24 @@ app.use(
 app.use(
   "/api/integrations",
   integrationRoutes
+);
+
+// =====================================================
+// AI
+// =====================================================
+//
+// Base:
+// /api/ai
+//
+// Dashboard AI:
+//
+// POST /api/ai/dashboard-insights
+//
+// =====================================================
+
+app.use(
+  "/api/ai",
+  aiRoutes
 );
 
 // =====================================================
@@ -476,6 +486,10 @@ app.listen(
 
     console.log(
       `Integrations API: http://localhost:${PORT}/api/integrations`
+    );
+
+    console.log(
+      `AI API: http://localhost:${PORT}/api/ai`
     );
   }
 );
